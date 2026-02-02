@@ -1,23 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Journal | دفتر اليومية</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Journal{% endblock %}
 
-<h2>📒 Journal Entries | دفتر اليومية</h2>
-
-<h3>➕ New Entry | قيد جديد</h3>
+{% block content %}
+<h2>📒 Journal | دفتر اليومية</h2>
 
 <form method="post" action="/journal/create">
-
-    <input type="number" name="entry_no" placeholder="Entry No | رقم القيد" required>
+    <input type="number" name="entry_no" placeholder="Entry No" required>
     <input type="date" name="date" required>
-    <input type="text" name="description" placeholder="Description | البيان" required>
+    <input type="text" name="description" placeholder="Description" required>
 
     <select name="currency_id" required>
-        <option value="">Currency | العملة</option>
         {% for c in currencies %}
         <option value="{{ c.id }}">{{ c.code }}</option>
         {% endfor %}
@@ -27,47 +19,36 @@
 
     {% for i in range(2) %}
     <h4>Line {{ i + 1 }}</h4>
-
-    <select name="account_id" required>
+    <select name="account_id">
         {% for a in accounts %}
         <option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>
         {% endfor %}
     </select>
-
-    <input type="number" step="0.01" name="debit" placeholder="Debit | مدين">
-    <input type="number" step="0.01" name="credit" placeholder="Credit | دائن">
-
+    <input type="number" step="0.01" name="debit" placeholder="Debit">
+    <input type="number" step="0.01" name="credit" placeholder="Credit">
     <select name="person_id">
-        <option value="">Person | الشخص</option>
+        <option value="">Person</option>
         {% for p in persons %}
         <option value="{{ p.id }}">{{ p.name }}</option>
         {% endfor %}
     </select>
-
     <hr>
     {% endfor %}
 
-    <button type="submit">💾 Save Entry | حفظ القيد</button>
+    <button type="submit">💾 Save</button>
 </form>
 
-<hr>
-
-<h3>📄 Saved Entries</h3>
-
+<h3>Saved Entries</h3>
 <ul>
 {% for e in entries %}
-    <li>
-        Entry {{ e.entry_no }} - {{ e.description }}
-        {% if e.posted %}
-            ✅ Posted (Read Only)
-        {% else %}
-            <form method="post" action="/journal/post/{{ e.id }}" style="display:inline;">
-                <button type="submit">📌 Post | ترحيل</button>
-            </form>
-        {% endif %}
-    </li>
+<li>
+Entry {{ e.entry_no }} - {{ e.description }}
+{% if e.posted %} ✅ Posted {% else %}
+<form method="post" action="/journal/post/{{ e.id }}" style="display:inline;">
+<button>Post</button>
+</form>
+{% endif %}
+</li>
 {% endfor %}
 </ul>
-
-</body>
-</html>
+{% endblock %}
