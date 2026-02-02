@@ -1,1 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reports | التقارير</title>
+</head>
+<body>
 
+<h2>📊 Reports | التقارير</h2>
+
+<h3>📘 Account Statement | كشف حساب</h3>
+<form method="post" action="/reports/account">
+    <select name="account_id" required>
+        {% for a in accounts %}
+        <option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">عرض</button>
+</form>
+
+{% if account_report %}
+<table border="1">
+<tr><th>Date</th><th>Entry</th><th>Description</th><th>Debit</th><th>Credit</th></tr>
+{% for r in account_report %}
+<tr>
+<td>{{ r.date }}</td>
+<td>{{ r.entry_no }}</td>
+<td>{{ r.description }}</td>
+<td>{{ r.debit }}</td>
+<td>{{ r.credit }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<hr>
+
+<h3>👤 Person Statement | كشف شخص</h3>
+<form method="post" action="/reports/person">
+    <select name="person_id" required>
+        {% for p in persons %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">عرض</button>
+</form>
+
+{% if person_report %}
+<table border="1">
+<tr><th>Date</th><th>Entry</th><th>Description</th><th>Debit</th><th>Credit</th></tr>
+{% for r in person_report %}
+<tr>
+<td>{{ r.date }}</td>
+<td>{{ r.entry_no }}</td>
+<td>{{ r.description }}</td>
+<td>{{ r.debit }}</td>
+<td>{{ r.credit }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<hr>
+
+<h3>📊 Trial Balance | ميزان المراجعة</h3>
+<table border="1">
+<tr><th>Code</th><th>Account</th><th>Debit</th><th>Credit</th></tr>
+{% for t in trial_balance %}
+<tr>
+<td>{{ t.code }}</td>
+<td>{{ t.name }}</td>
+<td>{{ t.debit or 0 }}</td>
+<td>{{ t.credit or 0 }}</td>
+</tr>
+{% endfor %}
+</table>
+
+</body>
+</html>
