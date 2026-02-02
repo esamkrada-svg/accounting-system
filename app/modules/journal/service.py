@@ -1,84 +1,56 @@
 from sqlalchemy.orm import Session
-from app.database.models import (
-    JournalEntry,
-    JournalLine,
-    Account,
-    Person,
-    Currency
-)
+from app.database.models import JournalEntry, JournalLine, AccountingPeriod
 from datetime import date
 
 
-def import_journal_from_excel(db: Session, rows: list[dict]):
-    entries = {}
+def is_date_closed(db: Session, entry_date: date) -> bool:
+    period = (
+        db.query(AccountingPeriod)
+        .filter(AccountingPeriod.start_date <= entry_date)
+        .filter(AccountingPeriod.end_date >= entry_date)
+        .filter(AccountingPeriod.closed == True)
+        .first()
+    )
+    return period is not None
 
-    for r in rows:
-        entry_no = int(r["EntryNo"])
 
-        if entry_no not in entries:
-            # إنشاء أو جلب العملة
-            currency = (
-                db.query(Currency)
-                .filter(Currency.code == r["Currency"])
-                .first()
+def create_journal_entry(
+    db: Session,
+    entry_no: int,
+    date,
+    description: str,
+    currency_id: int,
+    lines: list
+):
+    if is_date_closed(db, date):
+        raise ValueError("Accounting period is closed")
+
+    total_debit = sum(l["debit"] for l in lines)
+    total_credit = sum(l["credit"] for l in lines)
+
+    if round(total_debit, 2) != round(total_credit, 2):
+        raise ValueError("Debit and Credit not balanced")
+
+    entry = JournalEntry(
+        entry_no=entry_no,
+        date=date,
+        description=description,
+        currency_id=currency_id,
+        posted=False
+    )
+    db.add(entry)
+    db.flush()
+
+    for line in lines:
+        db.add(
+            JournalLine(
+                entry_id=entry.id,
+                account_id=line["account_id"],
+                debit=line["debit"],
+                credit=line["credit"],
+                person_id=line.get("person_id")
             )
-            if not currency:
-                currency = Currency(code=r["Currency"], name=r["Currency"])
-                db.add(currency)
-                db.flush()
-
-            entry_date = r["Date"] or date.today()
-
-            entry = JournalEntry(
-                entry_no=entry_no,
-                date=entry_date,
-                description=r["Description"],
-                currency_id=currency.id,
-                posted=False
-            )
-            db.add(entry)
-            db.flush()
-
-            entries[entry_no] = entry
-
-        # الحساب
-        account = (
-            db.query(Account)
-            .filter(Account.code == r["Account"])
-            .first()
         )
-        if not account:
-            account = Account(
-                code=r["Account"],
-                name=r["Account"],
-                type="Expense"
-            )
-            db.add(account)
-            db.flush()
-
-        # الشخص (اختياري)
-        person = None
-        if r.get("PersonTag"):
-            person = (
-                db.query(Person)
-                .filter(Person.name == r["PersonTag"])
-                .first()
-            )
-            if not person:
-                person = Person(
-                    name=r["PersonTag"],
-                    category="other"
-                )
-                db.add(person)
-                db.flush()
-
-        line = JournalLine(
-            entry_id=entries[entry_no].id,
-            account_id=account.id,
-            debit=float(r["Debit"] or 0),
-            credit=float(r["Credit"] or 0),
-            person_id=person.id if person else None
-        )
-        db.add(line)
 
     db.commit()
+    return entry
