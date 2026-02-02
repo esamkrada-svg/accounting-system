@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Import Journal{% endblock %}
+
+{% block content %}
+<h2>⬆ Import Journal from Excel</h2>
+
+<p>
+Sheet name must be: <b>JOURNAL_RAW</b><br>
+Columns order:
+</p>
+
+<pre>
+EntryNo | Date | Currency | Description | Account | Debit | Credit | PersonTag | TypeTag
+</pre>
+
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".xlsx" required>
+    <br><br>
+    <button type="submit">📥 Import</button>
+</form>
+{% endblock %}
