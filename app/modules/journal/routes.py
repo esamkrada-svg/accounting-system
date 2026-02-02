@@ -55,14 +55,18 @@ def create_entry(
             "person_id": person_id[i] if i < len(person_id) else None
         })
 
-    create_journal_entry(
-        db=db,
-        entry_no=entry_no,
-        date=date,
-        description=description,
-        currency_id=currency_id,
-        lines=lines
-    )
+    try:
+        create_journal_entry(
+            db=db,
+            entry_no=entry_no,
+            date=date,
+            description=description,
+            currency_id=currency_id,
+            lines=lines
+        )
+    except ValueError:
+        # في حالة محاولة تعديل قيد مُرحل
+        return RedirectResponse("/journal", status_code=303)
 
     return RedirectResponse("/journal", status_code=303)
 
