@@ -29,6 +29,7 @@ class Currency(Base):
     id = Column(Integer, primary_key=True)
     code = Column(String, unique=True)
     name = Column(String)
+    active = Column(Boolean, default=True)
 
 
 class JournalEntry(Base):
