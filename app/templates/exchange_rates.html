@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Exchange Rates{% endblock %}
+
+{% block content %}
+<h2>💱 Exchange Rates | أسعار الصرف</h2>
+
+<form method="post" action="/exchange-rates/create">
+    <select name="currency_id" required>
+        {% for c in currencies %}
+        <option value="{{ c.id }}">{{ c.code }}</option>
+        {% endfor %}
+    </select>
+
+    <input type="number" step="0.0001" name="rate" placeholder="Rate" required>
+    <input type="date" name="effective_date" required>
+
+    <button type="submit">➕ Add Rate</button>
+</form>
+
+<hr>
+
+<table>
+<tr>
+    <th>Currency</th>
+    <th>Rate</th>
+    <th>Effective Date</th>
+</tr>
+{% for r in rates %}
+<tr>
+    <td>{{ r.currency.code }}</td>
+    <td>{{ r.rate }}</td>
+    <td>{{ r.effective_date }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
