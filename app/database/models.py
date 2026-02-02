@@ -8,25 +8,41 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True)
     password_hash = Column(String)
-    role = Column(String)  # admin, accountant, viewer
+    role = Column(String)
 
 
 class AccountingPeriod(Base):
     __tablename__ = "accounting_periods"
-
     id = Column(Integer, primary_key=True)
     start_date = Column(Date)
     end_date = Column(Date)
     closed = Column(Boolean, default=False)
 
 
+class Currency(Base):
+    __tablename__ = "currencies"
+    id = Column(Integer, primary_key=True)
+    code = Column(String, unique=True)
+    name = Column(String)
+    active = Column(Boolean, default=True)
+    is_base = Column(Boolean, default=False)
+
+
+class ExchangeRate(Base):
+    __tablename__ = "exchange_rates"
+    id = Column(Integer, primary_key=True)
+    currency_id = Column(Integer, ForeignKey("currencies.id"))
+    rate = Column(Float)
+    effective_date = Column(Date, default=date.today)
+
+    currency = relationship("Currency")
+
+
 class Account(Base):
     __tablename__ = "accounts"
-
     id = Column(Integer, primary_key=True)
     code = Column(String, unique=True)
     name = Column(String)
@@ -35,24 +51,13 @@ class Account(Base):
 
 class Person(Base):
     __tablename__ = "persons"
-
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     category = Column(String)
 
 
-class Currency(Base):
-    __tablename__ = "currencies"
-
-    id = Column(Integer, primary_key=True)
-    code = Column(String, unique=True)
-    name = Column(String)
-    active = Column(Boolean, default=True)
-
-
 class JournalEntry(Base):
     __tablename__ = "journal_entries"
-
     id = Column(Integer, primary_key=True)
     entry_no = Column(Integer, unique=True)
     date = Column(Date, default=date.today)
@@ -66,7 +71,6 @@ class JournalEntry(Base):
 
 class JournalLine(Base):
     __tablename__ = "journal_lines"
-
     id = Column(Integer, primary_key=True)
     entry_id = Column(Integer, ForeignKey("journal_entries.id"))
     account_id = Column(Integer, ForeignKey("accounts.id"))
