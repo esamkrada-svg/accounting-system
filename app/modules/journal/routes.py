@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+import pandas as pd
 
 from app.database.database import SessionLocal
-from app.database.models import Account, Person, Currency, JournalEntry
-from app.modules.journal.service import create_journal_entry, get_all_entries
+from app.modules.journal.service import import_journal_from_excel
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
 templates = Jinja2Templates(directory="app/templates")
@@ -19,64 +19,38 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_class=HTMLResponse)
-def journal_page(request: Request, db: Session = Depends(get_db)):
+@router.get("/import", response_class=HTMLResponse)
+def import_page(request: Request):
     return templates.TemplateResponse(
-        "journal.html",
-        {
-            "request": request,
-            "entries": get_all_entries(db),
-            "accounts": db.query(Account).all(),
-            "persons": db.query(Person).all(),
-            "currencies": db.query(Currency).all(),
-        }
+        "journal_import.html",
+        {"request": request}
     )
 
 
-@router.post("/create")
-def create_entry(
-    entry_no: int = Form(...),
-    date: str = Form(...),
-    description: str = Form(...),
-    currency_id: int = Form(...),
-    account_id: list[int] = Form(...),
-    debit: list[float] = Form(...),
-    credit: list[float] = Form(...),
-    person_id: list[int] = Form([]),
+@router.post("/import")
+async def import_excel(
+    file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    lines = []
+    df = pd.read_excel(file.file, sheet_name="JOURNAL_RAW")
 
-    for i in range(len(account_id)):
-        lines.append({
-            "account_id": account_id[i],
-            "debit": debit[i] or 0,
-            "credit": credit[i] or 0,
-            "person_id": person_id[i] if i < len(person_id) else None
-        })
+    # تنظيف وترتيب الأعمدة
+    df.columns = [
+        "EntryNo",
+        "Date",
+        "Currency",
+        "Description",
+        "Account",
+        "Debit",
+        "Credit",
+        "PersonTag",
+        "TypeTag",
+    ]
 
-    try:
-        create_journal_entry(
-            db=db,
-            entry_no=entry_no,
-            date=date,
-            description=description,
-            currency_id=currency_id,
-            lines=lines
-        )
-    except ValueError:
-        # في حالة محاولة تعديل قيد مُرحل
-        return RedirectResponse("/journal", status_code=303)
+    df = df.fillna("")
 
-    return RedirectResponse("/journal", status_code=303)
+    rows = df.to_dict(orient="records")
 
-
-@router.post("/post/{entry_id}")
-def post_entry(entry_id: int, db: Session = Depends(get_db)):
-    entry = db.query(JournalEntry).get(entry_id)
-
-    if entry and not entry.posted:
-        entry.posted = True
-        db.commit()
+    import_journal_from_excel(db, rows)
 
     return RedirectResponse("/journal", status_code=303)
