@@ -1,6 +1,13 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
-from app.database.database import init_db
+from fastapi import FastAPI
+from app.modules.accounts.routes import router as accounts_router
+from app.modules.persons.routes import router as persons_router
+from app.modules.journal.routes import router as journal_router
+
+app = FastAPI()
+
+app.include_router(accounts_router, prefix="/accounts")
+app.include_router(persons_router, prefix="/persons")
+app.include_router(journal_router, prefix="/journal")
 
 # Web modules
 from app.modules.accounts.routes import router as accounts_router
