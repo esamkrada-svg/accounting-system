@@ -6,12 +6,21 @@ from datetime import date
 Base = declarative_base()
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    password_hash = Column(String)
+    role = Column(String)  # admin, accountant, viewer
+
+
 class AccountingPeriod(Base):
     __tablename__ = "accounting_periods"
 
     id = Column(Integer, primary_key=True)
-    start_date = Column(Date, unique=True)
-    end_date = Column(Date, unique=True)
+    start_date = Column(Date)
+    end_date = Column(Date)
     closed = Column(Boolean, default=False)
 
 
