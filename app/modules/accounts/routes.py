@@ -14,17 +14,21 @@ def get_db():
         yield db
     finally:
         db.close()
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
 def accounts_page(request: Request, db: Session = Depends(get_db)):
     accounts = get_all_accounts(db)
-    return {
-        "accounts": accounts,
-        "request": request
-    }
-
-
+    return templates.TemplateResponse(
+        "accounts.html",
+        {
+            "request": request,
+            "accounts": accounts
+        }
+    )
 @router.post("/create")
 def add_account(
     code: str = Form(...),
