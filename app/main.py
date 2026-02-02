@@ -9,6 +9,7 @@ from app.modules.reports.routes import router as reports_router
 from app.modules.currencies.routes import router as currencies_router
 from app.modules.periods.routes import router as periods_router
 from app.modules.auth.routes import router as auth_router
+from app.modules.exchange_rates.routes import router as exchange_rates_router
 
 app = FastAPI(title="Accounting System")
 
@@ -36,6 +37,7 @@ app.include_router(persons_router)
 app.include_router(journal_router)
 app.include_router(reports_router)
 app.include_router(currencies_router)
+app.include_router(exchange_rates_router)
 app.include_router(periods_router)
 
 
