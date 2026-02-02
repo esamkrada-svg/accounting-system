@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.database.database import init_db
+from app.modules.accounts.routes import router as accounts_router
 
 app = FastAPI(
     title="Accounting System",
@@ -11,6 +12,9 @@ app = FastAPI(
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+
+app.include_router(accounts_router)
 
 
 @app.get("/")
