@@ -1,1 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chart of Accounts | دليل الحسابات</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        form { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
 
+<h2>📘 Chart of Accounts | دليل الحسابات</h2>
+
+<form method="post" action="/accounts/create">
+    <input type="text" name="code" placeholder="Account Code | رقم الحساب" required>
+    <input type="text" name="name" placeholder="Account Name | اسم الحساب" required>
+
+    <select name="type" required>
+        <option value="">Type | النوع</option>
+        <option value="Asset">Asset | أصل</option>
+        <option value="Liability">Liability | التزام</option>
+        <option value="Equity">Equity | حقوق ملكية</option>
+        <option value="Income">Income | إيراد</option>
+        <option value="Expense">Expense | مصروف</option>
+    </select>
+
+    <button type="submit">➕ Add | إضافة</button>
+</form>
+
+<table>
+    <tr>
+        <th>Code<br>رقم</th>
+        <th>Name<br>الاسم</th>
+        <th>Type<br>النوع</th>
+    </tr>
+    {% for acc in accounts %}
+    <tr>
+        <td>{{ acc.code }}</td>
+        <td>{{ acc.name }}</td>
+        <td>{{ acc.type }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
