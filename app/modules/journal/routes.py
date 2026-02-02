@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database.database import SessionLocal
-from app.database.models import Account, Person, Currency
+from app.database.models import Account, Person, Currency, JournalEntry
 from app.modules.journal.service import create_journal_entry, get_all_entries
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
@@ -39,12 +39,10 @@ def create_entry(
     date: str = Form(...),
     description: str = Form(...),
     currency_id: int = Form(...),
-
     account_id: list[int] = Form(...),
     debit: list[float] = Form(...),
     credit: list[float] = Form(...),
     person_id: list[int] = Form([]),
-
     db: Session = Depends(get_db)
 ):
     lines = []
@@ -65,5 +63,16 @@ def create_entry(
         currency_id=currency_id,
         lines=lines
     )
+
+    return RedirectResponse("/journal", status_code=303)
+
+
+@router.post("/post/{entry_id}")
+def post_entry(entry_id: int, db: Session = Depends(get_db)):
+    entry = db.query(JournalEntry).get(entry_id)
+
+    if entry and not entry.posted:
+        entry.posted = True
+        db.commit()
 
     return RedirectResponse("/journal", status_code=303)
