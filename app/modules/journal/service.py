@@ -14,7 +14,7 @@ def create_journal_entry(
     total_credit = sum(l["credit"] for l in lines)
 
     if round(total_debit, 2) != round(total_credit, 2):
-        raise ValueError("Debit and Credit are not balanced")
+        raise ValueError("Debit and Credit not balanced")
 
     entry = JournalEntry(
         entry_no=entry_no,
@@ -24,18 +24,22 @@ def create_journal_entry(
         posted=False
     )
     db.add(entry)
-    db.flush()  # للحصول على entry.id
+    db.flush()
 
     for line in lines:
-        jl = JournalLine(
-            entry_id=entry.id,
-            account_id=line["account_id"],
-            debit=line["debit"],
-            credit=line["credit"],
-            person_id=line.get("person_id")
+        db.add(
+            JournalLine(
+                entry_id=entry.id,
+                account_id=line["account_id"],
+                debit=line["debit"],
+                credit=line["credit"],
+                person_id=line.get("person_id")
+            )
         )
-        db.add(jl)
 
     db.commit()
-    db.refresh(entry)
     return entry
+
+
+def get_all_entries(db: Session):
+    return db.query(JournalEntry).order_by(JournalEntry.entry_no.desc()).all()
