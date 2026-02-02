@@ -1,1 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Currencies | العملات</title>
+</head>
+<body>
 
+<h2>💱 Currencies | العملات</h2>
+
+<form method="post" action="/currencies/create">
+    <input type="text" name="code" placeholder="Code | الرمز" required>
+    <input type="text" name="name" placeholder="Name | الاسم" required>
+    <button type="submit">➕ Add</button>
+</form>
+
+<hr>
+
+<table border="1">
+<tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Status</th>
+    <th>Action</th>
+</tr>
+{% for c in currencies %}
+<tr>
+    <td>{{ c.code }}</td>
+    <td>{{ c.name }}</td>
+    <td>{{ "Active" if c.active else "Inactive" }}</td>
+    <td>
+        <form method="post" action="/currencies/toggle/{{ c.id }}">
+            <button type="submit">
+                {{ "Disable" if c.active else "Enable" }}
+            </button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+</table>
+
+</body>
+</html>
