@@ -6,6 +6,15 @@ from datetime import date
 Base = declarative_base()
 
 
+class AccountingPeriod(Base):
+    __tablename__ = "accounting_periods"
+
+    id = Column(Integer, primary_key=True)
+    start_date = Column(Date, unique=True)
+    end_date = Column(Date, unique=True)
+    closed = Column(Boolean, default=False)
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
