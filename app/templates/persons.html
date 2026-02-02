@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Persons | الأشخاص</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        form { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
 
+<h2>👤 Persons | الأشخاص</h2>
+
+<form method="post" action="/persons/create">
+    <input type="text" name="name" placeholder="Name | الاسم" required>
+
+    <select name="category" required>
+        <option value="">Category | التصنيف</option>
+        <option value="customer">Customer | عميل</option>
+        <option value="vendor">Vendor | مورد</option>
+        <option value="employee">Employee | موظف</option>
+        <option value="other">Other | آخر</option>
+    </select>
+
+    <button type="submit">➕ Add | إضافة</button>
+</form>
+
+<table>
+    <tr>
+        <th>Name<br>الاسم</th>
+        <th>Category<br>التصنيف</th>
+    </tr>
+    {% for p in persons %}
+    <tr>
+        <td>{{ p.name }}</td>
+        <td>{{ p.category }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
