@@ -5,6 +5,7 @@ from app.modules.persons.routes import router as persons_router
 from app.modules.journal.routes import router as journal_router
 from app.modules.reports.routes import router as reports_router
 from app.modules.currencies.routes import router as currencies_router
+from app.modules.periods.routes import router as periods_router
 
 app = FastAPI(title="Accounting System")
 
@@ -19,6 +20,7 @@ app.include_router(persons_router)
 app.include_router(journal_router)
 app.include_router(reports_router)
 app.include_router(currencies_router)
+app.include_router(periods_router)
 
 
 @app.get("/")
