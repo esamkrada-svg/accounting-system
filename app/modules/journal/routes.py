@@ -45,26 +45,36 @@ def create_entry(
     date: str = Form(...),
     description: str = Form(...),
     currency_id: int = Form(...),
-    account_id: int = Form(...),
-    debit: float = Form(0),
-    credit: float = Form(0),
-    person_id: int = Form(None),
+
+    account_id: list[int] = Form(...),
+    debit: list[float] = Form(...),
+    credit: list[float] = Form(...),
+    person_id: list[int] = Form([]),
+
     db: Session = Depends(get_db)
 ):
-    lines = [{
-        "account_id": account_id,
-        "debit": debit,
-        "credit": credit,
-        "person_id": person_id
-    }]
+    lines = []
 
-    create_journal_entry(
-        db=db,
-        entry_no=entry_no,
-        date=date,
-        description=description,
-        currency_id=currency_id,
-        lines=lines
-    )
+    for i in range(len(account_id)):
+        lines.append({
+            "account_id": account_id[i],
+            "debit": float(debit[i]) if debit[i] else 0,
+            "credit": float(credit[i]) if credit[i] else 0,
+            "person_id": person_id[i] if i < len(person_id) else None
+        })
+
+    try:
+        create_journal_entry(
+            db=db,
+            entry_no=entry_no,
+            date=date,
+            description=description,
+            currency_id=currency_id,
+            lines=lines
+        )
+    except ValueError as e:
+        return {"error": str(e)}
+
+    return RedirectResponse("/journal", status_code=303)
 
     return RedirectResponse("/journal", status_code=303)
