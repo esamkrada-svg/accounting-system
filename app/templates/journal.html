@@ -8,6 +8,8 @@
 
 <h2>📒 Journal Entries | دفتر اليومية</h2>
 
+<h3>➕ New Entry | قيد جديد</h3>
+
 <form method="post" action="/journal/create">
 
     <input type="number" name="entry_no" placeholder="Entry No | رقم القيد" required>
@@ -50,18 +52,18 @@
 
 <hr>
 
-<h3>Saved Entries</h3>
+<h3>📄 Saved Entries</h3>
 
 <ul>
 {% for e in entries %}
     <li>
         Entry {{ e.entry_no }} - {{ e.description }}
-        {% if not e.posted %}
+        {% if e.posted %}
+            ✅ Posted (Read Only)
+        {% else %}
             <form method="post" action="/journal/post/{{ e.id }}" style="display:inline;">
                 <button type="submit">📌 Post | ترحيل</button>
             </form>
-        {% else %}
-            ✅ Posted
         {% endif %}
     </li>
 {% endfor %}
