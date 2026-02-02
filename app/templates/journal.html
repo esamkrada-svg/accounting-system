@@ -6,7 +6,7 @@
 </head>
 <body>
 
-<h2>📒 Journal Entry | قيد يومي</h2>
+<h2>📒 Journal Entries | دفتر اليومية</h2>
 
 <form method="post" action="/journal/create">
 
@@ -47,6 +47,25 @@
 
     <button type="submit">💾 Save Entry | حفظ القيد</button>
 </form>
+
+<hr>
+
+<h3>Saved Entries</h3>
+
+<ul>
+{% for e in entries %}
+    <li>
+        Entry {{ e.entry_no }} - {{ e.description }}
+        {% if not e.posted %}
+            <form method="post" action="/journal/post/{{ e.id }}" style="display:inline;">
+                <button type="submit">📌 Post | ترحيل</button>
+            </form>
+        {% else %}
+            ✅ Posted
+        {% endif %}
+    </li>
+{% endfor %}
+</ul>
 
 </body>
 </html>
