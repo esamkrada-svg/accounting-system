@@ -10,6 +10,14 @@ def create_journal_entry(
     currency_id: int,
     lines: list
 ):
+    # منع إنشاء قيد بنفس الرقم إذا كان موجود ومُرحل
+    existing = db.query(JournalEntry).filter_by(entry_no=entry_no).first()
+    if existing:
+        if existing.posted:
+            raise ValueError("Cannot modify a posted entry")
+        else:
+            raise ValueError("Entry number already exists")
+
     total_debit = sum(l["debit"] for l in lines)
     total_credit = sum(l["credit"] for l in lines)
 
