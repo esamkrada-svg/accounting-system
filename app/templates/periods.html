@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Periods{% endblock %}
+
+{% block content %}
+<h2>📅 Accounting Periods | الفترات المحاسبية</h2>
+
+<form method="post" action="/periods/create">
+    <input type="date" name="start_date" required>
+    <input type="date" name="end_date" required>
+    <button type="submit">➕ Add Period</button>
+</form>
+
+<hr>
+
+<table>
+<tr>
+<th>Start</th><th>End</th><th>Status</th><th>Action</th>
+</tr>
+{% for p in periods %}
+<tr>
+<td>{{ p.start_date }}</td>
+<td>{{ p.end_date }}</td>
+<td>{{ "Closed" if p.closed else "Open" }}</td>
+<td>
+<form method="post" action="/periods/toggle/{{ p.id }}">
+<button>{{ "Open" if p.closed else "Close" }}</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
