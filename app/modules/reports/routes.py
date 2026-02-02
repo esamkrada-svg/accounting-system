@@ -1,18 +1,17 @@
-from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import pandas as pd
+import io
 
 from app.database.database import SessionLocal
-from app.database.models import Account, Person
 from app.modules.reports.service import (
-    account_statement,
-    person_statement,
-    trial_balance
+    get_trial_balance_data,
+    get_account_statement_data,
+    get_person_statement_data
 )
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 def get_db():
@@ -23,48 +22,52 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_class=HTMLResponse)
-def reports_page(request: Request, db: Session = Depends(get_db)):
-    return templates.TemplateResponse(
-        "reports.html",
-        {
-            "request": request,
-            "accounts": db.query(Account).all(),
-            "persons": db.query(Person).all(),
-            "trial_balance": trial_balance(db),
-        }
+@router.get("/export/trial-balance")
+def export_trial_balance(db: Session = Depends(get_db)):
+    data = get_trial_balance_data(db)
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Trial Balance")
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=trial_balance.xlsx"}
     )
 
 
-@router.post("/account", response_class=HTMLResponse)
-def report_account(
-    request: Request,
-    account_id: int = Form(...),
-    db: Session = Depends(get_db)
-):
-    return templates.TemplateResponse(
-        "reports.html",
-        {
-            "request": request,
-            "accounts": db.query(Account).all(),
-            "persons": db.query(Person).all(),
-            "account_report": account_statement(db, account_id),
-        }
+@router.get("/export/account/{account_id}")
+def export_account_statement(account_id: int, db: Session = Depends(get_db)):
+    data = get_account_statement_data(db, account_id)
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Account Statement")
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=account_statement.xlsx"}
     )
 
 
-@router.post("/person", response_class=HTMLResponse)
-def report_person(
-    request: Request,
-    person_id: int = Form(...),
-    db: Session = Depends(get_db)
-):
-    return templates.TemplateResponse(
-        "reports.html",
-        {
-            "request": request,
-            "accounts": db.query(Account).all(),
-            "persons": db.query(Person).all(),
-            "person_report": person_statement(db, person_id),
-        }
+@router.get("/export/person/{person_id}")
+def export_person_statement(person_id: int, db: Session = Depends(get_db)):
+    data = get_person_statement_data(db, person_id)
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Person Statement")
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=person_statement.xlsx"}
     )
