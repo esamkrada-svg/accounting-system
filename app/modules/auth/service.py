@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 from app.database.models import User
-from app.database.db import verify_password
+import hashlib
+
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def authenticate(db: Session, username: str, password: str):
@@ -8,7 +12,7 @@ def authenticate(db: Session, username: str, password: str):
     if not user:
         return None
 
-    if not verify_password(password, user.password_hash):
+    if user.password_hash != hash_password(password):
         return None
 
     return user
