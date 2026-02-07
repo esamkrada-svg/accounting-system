@@ -2,8 +2,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database.models import Base, User
 import hashlib
+import os
 
-DATABASE_URL = "sqlite:///./database.db"
+# ✅ مسار ثابت لقاعدة البيانات
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(
     DATABASE_URL,
@@ -22,16 +27,15 @@ def hash_password(password: str) -> str:
 
 
 def init_db():
-    # إنشاء الجداول
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
-        # 🔴 حذف أي admin قديم (مهما كانت طريقته)
+        # 🔴 حذف admin دائمًا (للتأكد 100%)
         db.query(User).filter(User.username == "admin").delete()
         db.commit()
 
-        # ✅ إنشاء admin جديد بطريقة موحّدة
+        # ✅ إعادة إنشائه
         admin = User(
             username="admin",
             password_hash=hash_password("admin123"),
@@ -40,7 +44,8 @@ def init_db():
         db.add(admin)
         db.commit()
 
-        print("✅ Admin RESET successfully (admin / admin123)")
+        print("✅ Admin created in DB PATH:", DB_PATH)
+        print("🔐 Password = admin123")
 
     finally:
         db.close()
