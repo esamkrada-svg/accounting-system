@@ -2,8 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 
 # ================= DATABASE =================
-from app.database.db import init_db, SessionLocal
-from app.database.seed import create_default_admin
+from app.database.db import init_db
 
 # ================= WEB MODULES =================
 from app.modules.auth.routes import router as auth_router
@@ -30,11 +29,6 @@ app = FastAPI(title="Accounting System")
 @app.on_event("startup")
 def startup():
     init_db()
-    db = SessionLocal()
-    try:
-        create_default_admin(db)
-    finally:
-        db.close()
 
 # ================= MIDDLEWARE =================
 PUBLIC_PATHS = (
@@ -48,7 +42,6 @@ PUBLIC_PATHS = (
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
 
-    # السماح بالمسارات العامة + API
     if path.startswith(PUBLIC_PATHS) or path.startswith("/api"):
         return await call_next(request)
 
