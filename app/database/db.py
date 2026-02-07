@@ -1,4 +1,4 @@
-# ================= PASSLIB FIX (MUST BE FIRST) =================
+# ================= BCRYPT HARD FIX =================
 import os
 os.environ["PASSLIB_BCRYPT_NOCHECK"] = "1"
 
@@ -26,32 +26,39 @@ SessionLocal = sessionmaker(
 # ================= PASSWORD CONTEXT =================
 pwd_context = CryptContext(
     schemes=["bcrypt"],
-    bcrypt__ident="2b",
-    bcrypt__rounds=12,
+    deprecated="auto",
 )
+
+# ================= SAFE PASSWORD HELPERS =================
+def _safe_password(password: str) -> str:
+    """
+    bcrypt supports max 72 bytes ONLY
+    """
+    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(_safe_password(password))
+
+def verify_password(password: str, hashed: str) -> bool:
+    return pwd_context.verify(_safe_password(password), hashed)
 
 # ================= DB INIT =================
 def init_db():
-    """
-    - Create all tables
-    - Create default admin user if not exists
-    """
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
-
     try:
         admin = db.query(User).filter(User.username == "admin").first()
 
         if not admin:
             admin_user = User(
                 username="admin",
-                password_hash=pwd_context.hash("admin123"),
+                password_hash=hash_password("admin123"),
                 role="admin"
             )
             db.add(admin_user)
             db.commit()
-            print("✅ Default admin user created (admin / admin123)")
+            print("✅ Default admin created: admin / admin123")
         else:
             print("ℹ️ Admin user already exists")
 
