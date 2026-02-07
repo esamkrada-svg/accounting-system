@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from app.database.db import init_db, SessionLocal
 from app.database.models import Account
 
-# ================= SEED CURRENCIES (ADDED) =================
+# ================= SEED CURRENCIES =================
 from app.scripts.seed_currencies import seed_currencies
 
 # ================= WEB MODULES =================
@@ -17,6 +17,9 @@ from app.modules.reports.routes import router as reports_router
 from app.modules.currencies.routes import router as currencies_router
 from app.modules.exchange_rates.routes import router as exchange_rates_router
 from app.modules.periods.routes import router as periods_router
+
+# 🔴 NEW: OPENING ENTRY ROUTES
+from app.modules.opening.routes import router as opening_router
 
 # ================= API MODULES =================
 from app.api.auth import router as api_auth
@@ -93,7 +96,7 @@ def seed_chart_of_accounts():
 def startup():
     init_db()
     seed_chart_of_accounts()
-    seed_currencies()   # ✅ الإضافة الوحيدة
+    seed_currencies()
 
 # ================= MIDDLEWARE =================
 PUBLIC_PATHS = (
@@ -125,6 +128,9 @@ app.include_router(reports_router)
 app.include_router(currencies_router)
 app.include_router(exchange_rates_router)
 app.include_router(periods_router)
+
+# 🔴 NEW: OPENING ENTRY
+app.include_router(opening_router)
 
 # ================= API ROUTES =================
 app.include_router(api_auth, prefix="/api")
