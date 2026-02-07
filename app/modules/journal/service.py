@@ -54,3 +54,14 @@ def create_journal_entry(
 
     db.commit()
     return entry
+def import_journal_from_excel(file_bytes: bytes, filename: str = "upload.xlsx") -> dict:
+    """
+    Temporary placeholder to prevent app crash on startup.
+    Later: implement actual Excel parsing + journal creation.
+    """
+    return {
+        "ok": False,
+        "message": "import_journal_from_excel is not implemented yet",
+        "filename": filename,
+        "bytes_received": len(file_bytes) if file_bytes else 0,
+    }
