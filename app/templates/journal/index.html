@@ -25,13 +25,14 @@
             <th>التاريخ</th>
             <th>الوصف</th>
             <th>الحالة</th>
+            <th>إجراء</th>
         </tr>
     </thead>
     <tbody>
         {% if entries %}
             {% for e in entries %}
             <tr>
-                <td>{{ e.entry_no }}</td>
+                <td>{{ e.entry_no or "—" }}</td>
                 <td>{{ e.date }}</td>
                 <td>{{ e.description }}</td>
                 <td>
@@ -41,11 +42,30 @@
                         ⏳ غير مرحّل
                     {% endif %}
                 </td>
+                <td>
+                    {% if not e.posted %}
+                        <form method="post" action="/journal/post/{{ e.id }}" style="margin:0">
+                            <button type="submit"
+                                style="
+                                  padding:4px 8px;
+                                  background:#16a34a;
+                                  color:#fff;
+                                  border:none;
+                                  border-radius:4px;
+                                  cursor:pointer;
+                                ">
+                                ترحيل
+                            </button>
+                        </form>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         {% else %}
             <tr>
-                <td colspan="4" style="text-align:center">
+                <td colspan="5" style="text-align:center">
                     لا توجد قيود محاسبية
                 </td>
             </tr>
