@@ -24,6 +24,7 @@ def get_db():
 # ===============================
 @router.get("/", response_class=HTMLResponse)
 def opening_entry_page(request: Request, db: Session = Depends(get_db)):
+
     # 1️⃣ التأكد من وجود فترة محاسبية مفتوحة
     period = (
         db.query(AccountingPeriod)
@@ -41,13 +42,12 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
             }
         )
 
-    # 2️⃣ التأكد من عدم وجود قيد افتتاحي سابق
+    # 2️⃣ إذا القيد الافتتاحي موجود مسبقًا -> ممنوع
     opening_exists = (
         db.query(JournalEntry)
         .filter(JournalEntry.description == "Opening Balance")
         .first()
     )
-
     if opening_exists:
         return templates.TemplateResponse(
             "opening/message.html",
@@ -57,7 +57,23 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
             }
         )
 
-    # 3️⃣ جلب الحسابات
+    # 3️⃣ ممنوع إنشاء افتتاحي إذا توجد أي قيود أخرى بالفعل
+    # لأن الافتتاحي لازم يكون أول قيد بالنظام
+    any_existing_entry = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description != "Opening Balance")
+        .first()
+    )
+    if any_existing_entry:
+        return templates.TemplateResponse(
+            "opening/message.html",
+            {
+                "request": request,
+                "message": "❌ يوجد قيود محاسبية سابقة بالفعل. لا يمكن إنشاء القيد الافتتاحي بعد وجود قيود. احذف القيود التجريبية/صفّر قاعدة البيانات ثم أعد المحاولة."
+            }
+        )
+
+    # 4️⃣ جلب الحسابات
     accounts = db.query(Account).order_by(Account.code).all()
 
     return templates.TemplateResponse(
@@ -75,12 +91,37 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
 # ===============================
 @router.post("/create")
 async def create_opening(request: Request, db: Session = Depends(get_db)):
-    form = dict(await request.form())
 
+    # حماية إضافية: إذا الافتتاحي موجود -> ممنوع
+    opening_exists = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description == "Opening Balance")
+        .first()
+    )
+    if opening_exists:
+        return RedirectResponse("/opening", status_code=303)
+
+    # حماية إضافية: إذا توجد أي قيود أخرى -> ممنوع
+    any_existing_entry = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description != "Opening Balance")
+        .first()
+    )
+    if any_existing_entry:
+        return templates.TemplateResponse(
+            "opening/message.html",
+            {
+                "request": request,
+                "message": "❌ لا يمكن حفظ القيد الافتتاحي لأن هناك قيودًا سابقة. احذف القيود التجريبية/صفّر قاعدة البيانات ثم أعد المحاولة."
+            }
+        )
+
+    form = dict(await request.form())
     rows = []
 
+    # form keys مثل debit_1100 / credit_3100
     for key, value in form.items():
-        if not value:
+        if value is None or str(value).strip() == "":
             continue
 
         if key.startswith("debit_") or key.startswith("credit_"):
@@ -89,7 +130,7 @@ async def create_opening(request: Request, db: Session = Depends(get_db)):
 
             row = next((r for r in rows if r["account_id"] == acc_id), None)
             if not row:
-                row = {"account_id": acc_id, "debit": 0, "credit": 0}
+                row = {"account_id": acc_id, "debit": 0.0, "credit": 0.0}
                 rows.append(row)
 
             if key.startswith("debit_"):
@@ -97,6 +138,23 @@ async def create_opening(request: Request, db: Session = Depends(get_db)):
             else:
                 row["credit"] = float(value)
 
-    create_opening_entry(db, rows)
+    try:
+        create_opening_entry(db, rows)
+    except Exception as e:
+        # service فيها rollback، لكن نضمن هنا أيضًا
+        db.rollback()
+        return templates.TemplateResponse(
+            "opening/message.html",
+            {
+                "request": request,
+                "message": f"❌ فشل إنشاء القيد الافتتاحي: {str(e)}"
+            }
+        )
 
-    return RedirectResponse("/opening", status_code=303)
+    return templates.TemplateResponse(
+        "opening/message.html",
+        {
+            "request": request,
+            "message": "✅ تم إنشاء القيد الافتتاحي بنجاح. يمكنك الآن البدء باستخدام النظام."
+        }
+    )
