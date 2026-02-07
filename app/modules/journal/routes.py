@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 import pandas as pd
 
 from app.database.db import SessionLocal
+from app.database.models import JournalEntry
 from app.modules.journal.service import import_journal_from_excel
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
@@ -19,6 +20,29 @@ def get_db():
         db.close()
 
 
+# =========================
+# 📒 شاشة القيود اليومية
+# =========================
+@router.get("/", response_class=HTMLResponse)
+def journal_list(request: Request, db: Session = Depends(get_db)):
+    entries = (
+        db.query(JournalEntry)
+        .order_by(JournalEntry.date, JournalEntry.entry_no)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "journal/index.html",
+        {
+            "request": request,
+            "entries": entries
+        }
+    )
+
+
+# =========================
+# 📥 صفحة استيراد القيود من Excel
+# =========================
 @router.get("/import", response_class=HTMLResponse)
 def import_page(request: Request):
     return templates.TemplateResponse(
@@ -27,6 +51,9 @@ def import_page(request: Request):
     )
 
 
+# =========================
+# 📥 تنفيذ الاستيراد
+# =========================
 @router.post("/import")
 async def import_excel(
     file: UploadFile = File(...),
