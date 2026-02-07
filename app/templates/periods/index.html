@@ -1,1 +1,62 @@
+{% extends "base.html" %}
 
+{% block title %}Accounting Periods | الفترات المحاسبية{% endblock %}
+
+{% block content %}
+<h2>📅 Accounting Periods | الفترات المحاسبية</h2>
+
+<form method="post" action="/periods/create">
+    <label>
+        Start Date:
+        <input type="date" name="start_date" required>
+    </label>
+
+    <label>
+        End Date:
+        <input type="date" name="end_date" required>
+    </label>
+
+    <button type="submit">➕ Add Period</button>
+</form>
+
+<hr>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in periods %}
+        <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.start_date }}</td>
+            <td>{{ p.end_date }}</td>
+            <td>
+                {% if p.closed %}
+                    🔒 Closed
+                {% else %}
+                    🟢 Open
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" action="/periods/toggle/{{ p.id }}">
+                    <button type="submit">
+                        {% if p.closed %}
+                            🔓 Open
+                        {% else %}
+                            🔒 Close
+                        {% endif %}
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
