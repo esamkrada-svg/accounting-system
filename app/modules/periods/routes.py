@@ -21,10 +21,17 @@ def get_db():
 
 @router.get("/", response_class=HTMLResponse)
 def periods_page(request: Request, db: Session = Depends(get_db)):
-    periods = db.query(AccountingPeriod).order_by(AccountingPeriod.start_date).all()
+    periods = (
+        db.query(AccountingPeriod)
+        .order_by(AccountingPeriod.start_date.desc())
+        .all()
+    )
     return templates.TemplateResponse(
-        "periods.html",
-        {"request": request, "periods": periods}
+        "periods/index.html",
+        {
+            "request": request,
+            "periods": periods
+        }
     )
 
 
@@ -34,7 +41,13 @@ def create_period(
     end_date: date = Form(...),
     db: Session = Depends(get_db)
 ):
-    db.add(AccountingPeriod(start_date=start_date, end_date=end_date))
+    db.add(
+        AccountingPeriod(
+            start_date=start_date,
+            end_date=end_date,
+            closed=False
+        )
+    )
     db.commit()
     return RedirectResponse("/periods", status_code=303)
 
