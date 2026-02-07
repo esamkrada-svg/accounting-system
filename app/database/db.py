@@ -1,11 +1,16 @@
+# ================= PASSLIB FIX (MUST BE FIRST) =================
+import os
+os.environ["PASSLIB_BCRYPT_NOCHECK"] = "1"
+
+# ================= IMPORTS =================
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.database.models import Base, User
 from passlib.context import CryptContext
-import os
 
-# ================= DATABASE =================
-DATABASE_URL = "sqlite:///./app.db"
+from app.database.models import Base, User
+
+# ================= DATABASE CONFIG =================
+DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(
     DATABASE_URL,
@@ -19,40 +24,36 @@ SessionLocal = sessionmaker(
 )
 
 # ================= PASSWORD CONTEXT =================
-# تعطيل bcrypt wrap bug (مهم مع Python 3.13)
 pwd_context = CryptContext(
     schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__ident="2b",          # تثبيت ident
+    bcrypt__ident="2b",
     bcrypt__rounds=12,
 )
 
-# تعطيل فحص wrap bug صراحة
-os.environ["PASSLIB_BCRYPT_NOCHECK"] = "1"
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-
+# ================= DB INIT =================
 def init_db():
-    # 1. إنشاء الجداول
+    """
+    - Create all tables
+    - Create default admin user if not exists
+    """
     Base.metadata.create_all(bind=engine)
 
-    # 2. إنشاء مستخدم admin افتراضي
     db = SessionLocal()
+
     try:
         admin = db.query(User).filter(User.username == "admin").first()
+
         if not admin:
-            admin = User(
+            admin_user = User(
                 username="admin",
-                password_hash=get_password_hash("admin123"),
+                password_hash=pwd_context.hash("admin123"),
                 role="admin"
             )
-            db.add(admin)
+            db.add(admin_user)
             db.commit()
             print("✅ Default admin user created (admin / admin123)")
         else:
             print("ℹ️ Admin user already exists")
+
     finally:
         db.close()
