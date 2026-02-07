@@ -55,11 +55,13 @@ def create_journal_page(request: Request, db: Session = Depends(get_db)):
 # 💾 حفظ القيد اليومي
 # =========================
 @router.post("/create")
-def save_journal_entry(
+async def save_journal_entry(
     request: Request,
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    form = await request.form()
+
     entry = JournalEntry(
         date=date.today(),
         description=description,
@@ -74,8 +76,8 @@ def save_journal_entry(
     accounts = db.query(Account).all()
 
     for acc in accounts:
-        debit = float(request.form()._form.get(f"debit_{acc.id}", 0) or 0)
-        credit = float(request.form()._form.get(f"credit_{acc.id}", 0) or 0)
+        debit = float(form.get(f"debit_{acc.id}") or 0)
+        credit = float(form.get(f"credit_{acc.id}") or 0)
 
         if debit == 0 and credit == 0:
             continue
@@ -93,7 +95,7 @@ def save_journal_entry(
 
     if round(total_debit, 2) != round(total_credit, 2):
         db.rollback()
-        return HTMLResponse("❌ القيد غير متوازن", status_code=400)
+        return HTMLResponse("❌ القيد غير متوازن (المدين ≠ الدائن)", status_code=400)
 
     db.commit()
     return RedirectResponse("/journal", status_code=303)
