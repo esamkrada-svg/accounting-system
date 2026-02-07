@@ -115,3 +115,12 @@ def export_person_statement(person_id: int, db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=person_statement.xlsx"}
     )
+# =========================
+# 📊 Reports Index (HTML)
+# =========================
+@router.get("/", response_class=HTMLResponse)
+def reports_index(request: Request):
+    return templates.TemplateResponse(
+        "reports/index.html",
+        {"request": request}
+    )
