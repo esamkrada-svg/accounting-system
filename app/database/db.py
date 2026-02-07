@@ -2,14 +2,13 @@
 import os
 os.environ["PASSLIB_BCRYPT_NOCHECK"] = "1"
 
-# ================= IMPORTS =================
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 
 from app.database.models import Base, User
 
-# ================= DATABASE CONFIG =================
+# ================= DATABASE =================
 DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(
@@ -23,17 +22,14 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-# ================= PASSWORD CONTEXT =================
+# ================= PASSWORD =================
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
 )
 
-# ================= SAFE PASSWORD HELPERS =================
 def _safe_password(password: str) -> str:
-    """
-    bcrypt supports max 72 bytes ONLY
-    """
+    # bcrypt supports ONLY 72 bytes
     return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
 
 def hash_password(password: str) -> str:
@@ -42,14 +38,13 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return pwd_context.verify(_safe_password(password), hashed)
 
-# ================= DB INIT =================
+# ================= INIT DB =================
 def init_db():
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.username == "admin").first()
-
         if not admin:
             admin_user = User(
                 username="admin",
@@ -58,9 +53,6 @@ def init_db():
             )
             db.add(admin_user)
             db.commit()
-            print("✅ Default admin created: admin / admin123")
-        else:
-            print("ℹ️ Admin user already exists")
-
+            print("✅ Default admin created (admin / admin123)")
     finally:
         db.close()
