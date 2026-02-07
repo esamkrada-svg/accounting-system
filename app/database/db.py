@@ -4,7 +4,6 @@ from app.database.models import Base, User
 import hashlib
 import os
 
-# ✅ مسار ثابت لقاعدة البيانات
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
@@ -31,11 +30,9 @@ def init_db():
 
     db = SessionLocal()
     try:
-        # 🔴 حذف admin دائمًا (للتأكد 100%)
         db.query(User).filter(User.username == "admin").delete()
         db.commit()
 
-        # ✅ إعادة إنشائه
         admin = User(
             username="admin",
             password_hash=hash_password("admin123"),
@@ -44,8 +41,6 @@ def init_db():
         db.add(admin)
         db.commit()
 
-        print("✅ Admin created in DB PATH:", DB_PATH)
-        print("🔐 Password = admin123")
-
+        print("✅ Admin created: admin / admin123")
     finally:
         db.close()
