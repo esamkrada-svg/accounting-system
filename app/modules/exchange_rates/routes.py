@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import date
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal
 from app.database.models import Currency
 from app.modules.exchange_rates.service import get_rates, add_rate
 
