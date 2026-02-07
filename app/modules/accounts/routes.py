@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal
 from app.modules.accounts.service import get_all_accounts, create_account
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
