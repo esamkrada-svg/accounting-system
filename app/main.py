@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 
 # ================= DATABASE =================
-from app.database.db import init_db
+from app.database.db import init_db, SessionLocal
+from app.database.seed import create_default_admin
 
 # ================= WEB MODULES =================
 from app.modules.auth.routes import router as auth_router
@@ -29,6 +30,11 @@ app = FastAPI(title="Accounting System")
 @app.on_event("startup")
 def startup():
     init_db()
+    db = SessionLocal()
+    try:
+        create_default_admin(db)
+    finally:
+        db.close()
 
 # ================= MIDDLEWARE =================
 PUBLIC_PATHS = (
