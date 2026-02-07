@@ -6,12 +6,7 @@ from sqlalchemy import func
 from datetime import date
 
 from app.database.db import SessionLocal
-from app.database.models import (
-    JournalEntry,
-    JournalLine,
-    Account,
-    AccountingPeriod
-)
+from app.database.models import JournalEntry, JournalLine, Account
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
 templates = Jinja2Templates(directory="app/templates")
@@ -26,37 +21,11 @@ def get_db():
 
 
 # =========================
-# ✅ قواعد أساسية
-# =========================
-def ensure_open_period(db: Session):
-    """لا يسمح بأي عملية ترحيل إلا بوجود فترة مفتوحة."""
-    period = (
-        db.query(AccountingPeriod)
-        .filter(AccountingPeriod.closed == False)
-        .order_by(AccountingPeriod.start_date)
-        .first()
-    )
-    if not period:
-        raise ValueError("❌ لا توجد فترة محاسبية مفتوحة. الرجاء إنشاء/فتح فترة أولاً.")
-
-
-def ensure_opening_exists(db: Session):
-    """لا يسمح بعمل قيود/ترحيل قبل القيد الافتتاحي."""
-    opening = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description == "Opening Balance", JournalEntry.posted == True)
-        .first()
-    )
-    if not opening:
-        raise ValueError("❌ لا يمكن إنشاء/ترحيل قيود قبل إنشاء القيد الافتتاحي (Opening Balance).")
-
-
-# =========================
 # 📄 قائمة القيود اليومية
 # =========================
 @router.get("/", response_class=HTMLResponse)
 def journal_index(request: Request, db: Session = Depends(get_db)):
-    entries = db.query(JournalEntry).order_by(JournalEntry.id.desc()).all()
+    entries = db.query(JournalEntry).order_by(JournalEntry.date.desc()).all()
 
     return templates.TemplateResponse(
         "journal/index.html",
@@ -72,11 +41,21 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
 # =========================
 @router.get("/create", response_class=HTMLResponse)
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
-    # ✅ القاعدة: لا قيود قبل الافتتاحي
-    try:
-        ensure_opening_exists(db)
-    except Exception as e:
-        return HTMLResponse(str(e), status_code=400)
+    # 🔒 التأكد من وجود قيد افتتاحي مرحّل
+    opening = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.description == "Opening Balance",
+            JournalEntry.posted == True
+        )
+        .first()
+    )
+
+    if not opening:
+        return HTMLResponse(
+            "❌ لا يمكن إنشاء قيود يومية قبل إنشاء القيد الافتتاحي.",
+            status_code=400
+        )
 
     accounts = db.query(Account).order_by(Account.code).all()
 
@@ -90,7 +69,7 @@ def create_journal_page(request: Request, db: Session = Depends(get_db)):
 
 
 # =========================
-# 💾 حفظ القيد اليومي (غير مرحّل)
+# 💾 حفظ القيد اليومي
 # =========================
 @router.post("/create")
 async def save_journal_entry(
@@ -98,25 +77,33 @@ async def save_journal_entry(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    # ✅ القاعدة: لا قيود قبل الافتتاحي
-    try:
-        ensure_opening_exists(db)
-    except Exception as e:
-        return HTMLResponse(str(e), status_code=400)
+    # 🔒 تأكيد وجود القيد الافتتاحي
+    opening = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.description == "Opening Balance",
+            JournalEntry.posted == True
+        )
+        .first()
+    )
+
+    if not opening:
+        return HTMLResponse(
+            "❌ لا يمكن إنشاء قيود قبل القيد الافتتاحي.",
+            status_code=400
+        )
 
     entry = JournalEntry(
         date=date.today(),
         description=description,
-        posted=False,
-        entry_no=None  # طبيعي يظل None إلى وقت الترحيل
+        posted=False
     )
     db.add(entry)
     db.flush()
 
     form = await request.form()
-
-    total_debit = 0.0
-    total_credit = 0.0
+    total_debit = 0
+    total_credit = 0
 
     accounts = db.query(Account).all()
 
@@ -127,13 +114,12 @@ async def save_journal_entry(
         if debit == 0 and credit == 0:
             continue
 
-        line = JournalLine(
+        db.add(JournalLine(
             entry_id=entry.id,
             account_id=acc.id,
             debit=debit,
             credit=credit
-        )
-        db.add(line)
+        ))
 
         total_debit += debit
         total_credit += credit
@@ -151,27 +137,21 @@ async def save_journal_entry(
 # =========================
 @router.post("/post/{entry_id}")
 def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
-    entry = db.query(JournalEntry).filter(JournalEntry.id == entry_id).first()
+    entry = db.query(JournalEntry).get(entry_id)
 
     if not entry:
         return HTMLResponse("❌ القيد غير موجود", status_code=404)
 
+    # ❌ منع ترحيل القيد الافتتاحي من هنا
+    if entry.description == "Opening Balance":
+        return HTMLResponse(
+            "❌ لا يمكن ترحيل القيد الافتتاحي من شاشة القيود.",
+            status_code=400
+        )
+
     if entry.posted:
         return RedirectResponse("/journal", status_code=303)
 
-    # ✅ القاعدة: لا ترحيل بدون فترة مفتوحة
-    try:
-        ensure_open_period(db)
-    except Exception as e:
-        return HTMLResponse(str(e), status_code=400)
-
-    # ✅ القاعدة: لا ترحيل قبل الافتتاحي
-    try:
-        ensure_opening_exists(db)
-    except Exception as e:
-        return HTMLResponse(str(e), status_code=400)
-
-    # توليد رقم قيد تلقائي (تسلسلي)
     max_no = db.query(func.max(JournalEntry.entry_no)).scalar() or 0
     entry.entry_no = max_no + 1
     entry.posted = True
