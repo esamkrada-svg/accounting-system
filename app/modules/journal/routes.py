@@ -1,12 +1,11 @@
-from fastapi import APIRouter, Depends, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-import pandas as pd
+from datetime import date
 
 from app.database.db import SessionLocal
-from app.database.models import JournalEntry
-from app.modules.journal.service import import_journal_from_excel
+from app.database.models import JournalEntry, JournalLine, Account
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
 templates = Jinja2Templates(directory="app/templates")
@@ -21,15 +20,11 @@ def get_db():
 
 
 # =========================
-# 📒 شاشة القيود اليومية
+# 📄 قائمة القيود اليومية
 # =========================
 @router.get("/", response_class=HTMLResponse)
-def journal_list(request: Request, db: Session = Depends(get_db)):
-    entries = (
-        db.query(JournalEntry)
-        .order_by(JournalEntry.date, JournalEntry.entry_no)
-        .all()
-    )
+def journal_index(request: Request, db: Session = Depends(get_db)):
+    entries = db.query(JournalEntry).order_by(JournalEntry.date.desc()).all()
 
     return templates.TemplateResponse(
         "journal/index.html",
@@ -41,43 +36,64 @@ def journal_list(request: Request, db: Session = Depends(get_db)):
 
 
 # =========================
-# 📥 صفحة استيراد القيود من Excel
+# ➕ شاشة إنشاء قيد جديد
 # =========================
-@router.get("/import", response_class=HTMLResponse)
-def import_page(request: Request):
+@router.get("/create", response_class=HTMLResponse)
+def create_journal_page(request: Request, db: Session = Depends(get_db)):
+    accounts = db.query(Account).order_by(Account.code).all()
+
     return templates.TemplateResponse(
-        "journal_import.html",
-        {"request": request}
+        "journal/create.html",
+        {
+            "request": request,
+            "accounts": accounts
+        }
     )
 
 
 # =========================
-# 📥 تنفيذ الاستيراد
+# 💾 حفظ القيد اليومي
 # =========================
-@router.post("/import")
-async def import_excel(
-    file: UploadFile = File(...),
+@router.post("/create")
+def save_journal_entry(
+    request: Request,
+    description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    df = pd.read_excel(file.file, sheet_name="JOURNAL_RAW")
+    entry = JournalEntry(
+        date=date.today(),
+        description=description,
+        posted=False
+    )
+    db.add(entry)
+    db.flush()
 
-    # تنظيف وترتيب الأعمدة
-    df.columns = [
-        "EntryNo",
-        "Date",
-        "Currency",
-        "Description",
-        "Account",
-        "Debit",
-        "Credit",
-        "PersonTag",
-        "TypeTag",
-    ]
+    total_debit = 0
+    total_credit = 0
 
-    df = df.fillna("")
+    accounts = db.query(Account).all()
 
-    rows = df.to_dict(orient="records")
+    for acc in accounts:
+        debit = float(request.form()._form.get(f"debit_{acc.id}", 0) or 0)
+        credit = float(request.form()._form.get(f"credit_{acc.id}", 0) or 0)
 
-    import_journal_from_excel(db, rows)
+        if debit == 0 and credit == 0:
+            continue
 
+        line = JournalLine(
+            entry_id=entry.id,
+            account_id=acc.id,
+            debit=debit,
+            credit=credit
+        )
+        db.add(line)
+
+        total_debit += debit
+        total_credit += credit
+
+    if round(total_debit, 2) != round(total_credit, 2):
+        db.rollback()
+        return HTMLResponse("❌ القيد غير متوازن", status_code=400)
+
+    db.commit()
     return RedirectResponse("/journal", status_code=303)
