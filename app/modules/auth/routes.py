@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal   # ✅ نفس المصدر
 from app.modules.auth.service import authenticate
 
 router = APIRouter(tags=["Auth"])
@@ -20,30 +20,21 @@ def get_db():
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": None}
-    )
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
-@router.post("/login", response_class=HTMLResponse)
+@router.post("/login")
 def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
     user = authenticate(db, username, password)
-
     if not user:
-        # ❗ بدل 500 → رسالة واضحة
         return templates.TemplateResponse(
             "login.html",
-            {
-                "request": request,
-                "error": "اسم المستخدم أو كلمة المرور غير صحيحة",
-            },
-            status_code=401,
+            {"request": request, "error": "اسم المستخدم أو كلمة المرور غير صحيحة"}
         )
 
     response = RedirectResponse("/accounts", status_code=303)
