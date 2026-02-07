@@ -7,28 +7,28 @@ def seed_currencies():
 
     try:
         currencies = [
-            # code , name_ar , symbol , is_base
-            ("YER", "الريال اليمني", "﷼", True),
-            ("USD", "الدولار الأمريكي", "$", False),
-            ("SAR", "الريال السعودي", "﷼", False),
-            ("EUR", "اليورو", "€", False),
-            ("GBP", "الجنيه الإسترليني", "£", False),
-            ("EGP", "الجنيه المصري", "£", False),
-            ("AED", "الدرهم الإماراتي", "د.إ", False),
-            ("OMR", "الريال العماني", "﷼", False),
-            ("QAR", "الريال القطري", "﷼", False),
-            ("KWD", "الدينار الكويتي", "د.ك", False),
+            # code , name_ar , is_base
+            ("YER", "الريال اليمني", True),
+            ("USD", "الدولار الأمريكي", False),
+            ("SAR", "الريال السعودي", False),
+            ("EUR", "اليورو", False),
+            ("GBP", "الجنيه الإسترليني", False),
+            ("EGP", "الجنيه المصري", False),
+            ("AED", "الدرهم الإماراتي", False),
+            ("OMR", "الريال العماني", False),
+            ("QAR", "الريال القطري", False),
+            ("KWD", "الدينار الكويتي", False),
         ]
 
-        for code, name, symbol, is_base in currencies:
+        for code, name, is_base in currencies:
             exists = db.query(Currency).filter(Currency.code == code).first()
             if not exists:
                 db.add(
                     Currency(
                         code=code,
                         name=name,
-                        symbol=symbol,
-                        is_base=is_base
+                        is_base=is_base,
+                        active=True
                     )
                 )
 
