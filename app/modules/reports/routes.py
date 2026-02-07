@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import pandas as pd
 import io
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal
 from app.modules.reports.service import (
     get_trial_balance_data,
     get_account_statement_data,
