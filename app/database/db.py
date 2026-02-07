@@ -2,7 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database.models import Base, User
 from passlib.context import CryptContext
+import os
 
+# ================= DATABASE =================
 DATABASE_URL = "sqlite:///./app.db"
 
 engine = create_engine(
@@ -16,7 +18,17 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ================= PASSWORD CONTEXT =================
+# تعطيل bcrypt wrap bug (مهم مع Python 3.13)
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__ident="2b",          # تثبيت ident
+    bcrypt__rounds=12,
+)
+
+# تعطيل فحص wrap bug صراحة
+os.environ["PASSLIB_BCRYPT_NOCHECK"] = "1"
 
 
 def get_password_hash(password: str) -> str:
@@ -24,10 +36,10 @@ def get_password_hash(password: str) -> str:
 
 
 def init_db():
-    # 1. إنشاء جميع الجداول
+    # 1. إنشاء الجداول
     Base.metadata.create_all(bind=engine)
 
-    # 2. إنشاء مستخدم admin افتراضي إن لم يكن موجودًا
+    # 2. إنشاء مستخدم admin افتراضي
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.username == "admin").first()
