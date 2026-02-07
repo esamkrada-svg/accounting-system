@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-
-{% block title %}التقارير{% endblock %}
+{% block title %}Reports | التقارير{% endblock %}
 
 {% block content %}
 <h2>📊 التقارير</h2>
 
 <ul>
-    <li>
-        <a href="/reports/trial-balance">🧾 ميزان المراجعة</a>
-    </li>
+  <li>
+    <a href="/reports/trial-balance">📄 ميزان المراجعة</a>
+    &nbsp;|&nbsp;
+    <a href="/reports/export/trial-balance">⬇️ تحميل Excel</a>
+  </li>
 </ul>
 {% endblock %}
