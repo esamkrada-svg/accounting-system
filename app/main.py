@@ -5,6 +5,9 @@ from fastapi.responses import RedirectResponse
 from app.database.db import init_db, SessionLocal
 from app.database.models import Account
 
+# ================= SEED CURRENCIES (ADDED) =================
+from app.scripts.seed_currencies import seed_currencies
+
 # ================= WEB MODULES =================
 from app.modules.auth.routes import router as auth_router
 from app.modules.accounts.routes import router as accounts_router
@@ -90,6 +93,7 @@ def seed_chart_of_accounts():
 def startup():
     init_db()
     seed_chart_of_accounts()
+    seed_currencies()   # ✅ الإضافة الوحيدة
 
 # ================= MIDDLEWARE =================
 PUBLIC_PATHS = (
