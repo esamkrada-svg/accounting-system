@@ -1,1 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Trial Balance | ميزان المراجعة{% endblock %}
 
+{% block content %}
+<h2>📄 Trial Balance | ميزان المراجعة</h2>
+
+<p>
+  <a href="/reports/export/trial-balance">⬇️ تحميل Excel</a>
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Account</th>
+      <th>Debit</th>
+      <th>Credit</th>
+      <th>Balance</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.code }}</td>
+      <td>{{ r.name }}</td>
+      <td>{{ "%.2f"|format(r.debit) }}</td>
+      <td>{{ "%.2f"|format(r.credit) }}</td>
+      <td>{{ "%.2f"|format(r.balance) }}</td>
+      <td>{{ r.balance_type }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if rows|length == 0 %}
+<p style="margin-top:15px;color:#666;">لا توجد قيود مُرحّلة (Posted) بعد، لذلك الميزان فارغ.</p>
+{% endif %}
+{% endblock %}
