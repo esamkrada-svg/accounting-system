@@ -31,10 +31,19 @@ def startup():
     init_db()
 
 # ================= MIDDLEWARE =================
+PUBLIC_PATHS = (
+    "/login",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+)
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # السماح للـ login و API بدون تحقق
-    if request.url.path.startswith("/login") or request.url.path.startswith("/api"):
+    path = request.url.path
+
+    # السماح بالمسارات العامة + API
+    if path.startswith(PUBLIC_PATHS) or path.startswith("/api"):
         return await call_next(request)
 
     user = request.cookies.get("user")
