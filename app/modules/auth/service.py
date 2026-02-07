@@ -1,21 +1,14 @@
 from sqlalchemy.orm import Session
-from passlib.hash import bcrypt
 from app.database.models import User
-
-
-def create_user(db: Session, username: str, password: str, role: str):
-    user = User(
-        username=username,
-        password_hash=bcrypt.hash(password),
-        role=role
-    )
-    db.add(user)
-    db.commit()
-    return user
+from app.database.db import verify_password
 
 
 def authenticate(db: Session, username: str, password: str):
     user = db.query(User).filter(User.username == username).first()
-    if user and bcrypt.verify(password, user.password_hash):
-        return user
-    return None
+    if not user:
+        return None
+
+    if not verify_password(password, user.password_hash):
+        return None
+
+    return user
