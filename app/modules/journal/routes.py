@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 import pandas as pd
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal
 from app.modules.journal.service import import_journal_from_excel
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
