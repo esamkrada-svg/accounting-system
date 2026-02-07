@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import date
 
 from app.database.db import SessionLocal
@@ -60,8 +61,6 @@ async def save_journal_entry(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    form = await request.form()
-
     entry = JournalEntry(
         date=date.today(),
         description=description,
@@ -70,14 +69,16 @@ async def save_journal_entry(
     db.add(entry)
     db.flush()
 
+    form = await request.form()
+
     total_debit = 0
     total_credit = 0
 
     accounts = db.query(Account).all()
 
     for acc in accounts:
-        debit = float(form.get(f"debit_{acc.id}") or 0)
-        credit = float(form.get(f"credit_{acc.id}") or 0)
+        debit = float(form.get(f"debit_{acc.id}", 0) or 0)
+        credit = float(form.get(f"credit_{acc.id}", 0) or 0)
 
         if debit == 0 and credit == 0:
             continue
@@ -95,7 +96,29 @@ async def save_journal_entry(
 
     if round(total_debit, 2) != round(total_credit, 2):
         db.rollback()
-        return HTMLResponse("❌ القيد غير متوازن (المدين ≠ الدائن)", status_code=400)
+        return HTMLResponse("❌ القيد غير متوازن", status_code=400)
+
+    db.commit()
+    return RedirectResponse("/journal", status_code=303)
+
+
+# =========================
+# ✅ ترحيل القيد
+# =========================
+@router.post("/post/{entry_id}")
+def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
+    entry = db.query(JournalEntry).get(entry_id)
+
+    if not entry:
+        return HTMLResponse("❌ القيد غير موجود", status_code=404)
+
+    if entry.posted:
+        return RedirectResponse("/journal", status_code=303)
+
+    # توليد رقم قيد تلقائي
+    max_no = db.query(func.max(JournalEntry.entry_no)).scalar() or 0
+    entry.entry_no = max_no + 1
+    entry.posted = True
 
     db.commit()
     return RedirectResponse("/journal", status_code=303)
