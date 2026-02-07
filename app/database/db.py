@@ -1,7 +1,9 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
+from app.database.models import Base, User
+from passlib.context import CryptContext
 
-DATABASE_URL = "sqlite:///./app.db"  # مؤقتًا – لاحقًا نغيرها
+DATABASE_URL = "sqlite:///./app.db"
 
 engine = create_engine(
     DATABASE_URL,
@@ -14,9 +16,31 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-Base = declarative_base()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
 
 
 def init_db():
-    from app.database import models
+    # 1. إنشاء جميع الجداول
     Base.metadata.create_all(bind=engine)
+
+    # 2. إنشاء مستخدم admin افتراضي إن لم يكن موجودًا
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                password_hash=get_password_hash("admin123"),
+                role="admin"
+            )
+            db.add(admin)
+            db.commit()
+            print("✅ Default admin user created (admin / admin123)")
+        else:
+            print("ℹ️ Admin user already exists")
+    finally:
+        db.close()
