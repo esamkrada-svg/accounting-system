@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import secrets
 
-from app.database.database import SessionLocal
+from app.database.db import SessionLocal
 from app.database.models import User
 from passlib.hash import bcrypt
 
