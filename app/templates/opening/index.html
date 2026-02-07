@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Opening Entry{% endblock %}
+
+{% block content %}
+<h2>🟢 القيد الافتتاحي</h2>
+
+<p style="color:#555">
+    هذا القيد يُسجَّل مرة واحدة فقط عند بدء النظام،
+    ولا يمكن إنشاء أي قيود محاسبية قبله.
+</p>
+
+<form method="post" action="/opening/create">
+    <table>
+        <thead>
+            <tr>
+                <th>الحساب</th>
+                <th>مدين</th>
+                <th>دائن</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for acc in accounts %}
+            <tr>
+                <td>
+                    {{ acc.code }} - {{ acc.name }}
+                    <input type="hidden" name="account_id" value="{{ acc.id }}">
+                </td>
+                <td>
+                    <input type="number" step="0.01" name="debit_{{ acc.id }}">
+                </td>
+                <td>
+                    <input type="number" step="0.01" name="credit_{{ acc.id }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+    <button type="submit">💾 حفظ القيد الافتتاحي</button>
+</form>
+{% endblock %}
