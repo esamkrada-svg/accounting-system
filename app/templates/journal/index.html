@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Journal | القيود اليومية{% endblock %}
+
+{% block content %}
+<h2>📒 القيود اليومية</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>رقم القيد</th>
+            <th>التاريخ</th>
+            <th>الوصف</th>
+            <th>الحالة</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if entries %}
+            {% for e in entries %}
+            <tr>
+                <td>{{ e.entry_no }}</td>
+                <td>{{ e.date }}</td>
+                <td>{{ e.description }}</td>
+                <td>
+                    {% if e.posted %}
+                        ✅ مرحّل
+                    {% else %}
+                        ⏳ غير مرحّل
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="4">لا توجد قيود محاسبية</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}
