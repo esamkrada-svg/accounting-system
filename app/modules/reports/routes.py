@@ -25,10 +25,10 @@ def get_db():
 
 
 # =========================
-# 📊 Reports Index (HTML)
+# 🏠 Reports Home (HTML)
 # =========================
 @router.get("/", response_class=HTMLResponse)
-def reports_index(request: Request):
+def reports_home(request: Request):
     return templates.TemplateResponse(
         "reports/index.html",
         {"request": request}
@@ -43,16 +43,17 @@ def trial_balance_page(request: Request, db: Session = Depends(get_db)):
     rows = get_trial_balance_data(db)
 
     trial_balance = []
-    for r in rows:
-        debit = r.Debit or 0
-        credit = r.Credit or 0
+    # ✅ safer: unpack tuples instead of r.Debit / r.Credit
+    for code, acc_name, debit, credit in rows:
+        debit = debit or 0
+        credit = credit or 0
 
         balance = debit - credit
         balance_type = "مدين" if balance > 0 else "دائن" if balance < 0 else ""
 
         trial_balance.append({
-            "code": r.Code,
-            "name": r.Account,
+            "code": code,
+            "name": acc_name,
             "debit": debit,
             "credit": credit,
             "balance": abs(balance),
@@ -61,10 +62,7 @@ def trial_balance_page(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse(
         "reports/trial_balance.html",
-        {
-            "request": request,
-            "rows": trial_balance
-        }
+        {"request": request, "rows": trial_balance}
     )
 
 
@@ -74,9 +72,11 @@ def trial_balance_page(request: Request, db: Session = Depends(get_db)):
 @router.get("/export/trial-balance")
 def export_trial_balance(db: Session = Depends(get_db)):
     data = get_trial_balance_data(db)
-    df = pd.DataFrame(data)
-    output = io.BytesIO()
 
+    # data rows may be tuples, give columns explicitly
+    df = pd.DataFrame(data, columns=["Code", "Account", "Debit", "Credit"])
+
+    output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Trial Balance")
 
@@ -94,9 +94,9 @@ def export_trial_balance(db: Session = Depends(get_db)):
 @router.get("/export/account/{account_id}")
 def export_account_statement(account_id: int, db: Session = Depends(get_db)):
     data = get_account_statement_data(db, account_id)
-    df = pd.DataFrame(data)
-    output = io.BytesIO()
+    df = pd.DataFrame(data, columns=["date", "entry_no", "description", "debit", "credit"])
 
+    output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Account Statement")
 
@@ -114,9 +114,9 @@ def export_account_statement(account_id: int, db: Session = Depends(get_db)):
 @router.get("/export/person/{person_id}")
 def export_person_statement(person_id: int, db: Session = Depends(get_db)):
     data = get_person_statement_data(db, person_id)
-    df = pd.DataFrame(data)
-    output = io.BytesIO()
+    df = pd.DataFrame(data, columns=["date", "entry_no", "description", "debit", "credit"])
 
+    output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Person Statement")
 
