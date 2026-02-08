@@ -27,6 +27,9 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+# ===============================
+# 🧠 تحميل السياق المعرفي
+# ===============================
 def load_context(
     context_files: Optional[List[str]] = None
 ) -> Dict[str, str]:
@@ -43,17 +46,32 @@ def load_context(
     return context
 
 
+# ===============================
+# 📄 تحميل أي ملف كود
+# ===============================
 def load_file(relative_path: str) -> str:
     """
-    تحميل أي ملف داخل المشروع بشكل آمن (READ-ONLY)
+    تحميل أي ملف داخل المشروع بشكل آمن
     """
     path = _safe_path(relative_path)
     return read_text(path)
 
 
-# ✅ Alias متوافق مع agent.py
+# =====================================================
+# ✅ ALIASES — للحفاظ على التوافق مع بقية النظام
+# =====================================================
+
 def load_code(relative_path: str) -> str:
     """
-    Alias لـ load_file للحفاظ على التوافق
+    Alias لـ load_file
+    (للتوافق مع agent.py و dev_ai)
     """
     return load_file(relative_path)
+
+
+def load_system_context() -> Dict[str, str]:
+    """
+    Alias لـ load_context
+    (اسم أوضح للاستخدام من API / AI Agent)
+    """
+    return load_context()
