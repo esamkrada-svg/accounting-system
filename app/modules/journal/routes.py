@@ -44,29 +44,14 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
     )
 
 
-def _ensure_opening_exists_and_fix_posted(db: Session) -> bool:
-    """
-    ✅ شرط موحد:
-    يكفي وجود Opening Balance في قاعدة البيانات.
-    وإذا كان موجودًا لكن posted=False نقوم بإصلاحه (بدون commit داخل GET).
-    """
-    opening = (
+# ✅ journal يتحقق فقط – لا يصلح ولا يغيّر
+def _opening_exists(db: Session) -> bool:
+    return (
         db.query(JournalEntry)
         .filter(JournalEntry.description == "Opening Balance")
         .first()
+        is not None
     )
-
-    if not opening:
-        return False
-
-    # Self-healing بدون side-effect
-    if opening.posted is False:
-        opening.posted = True
-        if opening.entry_no is None:
-            opening.entry_no = 0
-        db.flush()  # ❗ لا commit هنا
-
-    return True
 
 
 # =========================
@@ -75,7 +60,7 @@ def _ensure_opening_exists_and_fix_posted(db: Session) -> bool:
 @router.get("/create", response_class=HTMLResponse)
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
 
-    if not _ensure_opening_exists_and_fix_posted(db):
+    if not _opening_exists(db):
         return HTMLResponse(
             "❌ لا يمكن إنشاء قيود يومية قبل إنشاء القيد الافتتاحي.",
             status_code=400
@@ -102,7 +87,7 @@ async def save_journal_entry(
     db: Session = Depends(get_db)
 ):
 
-    if not _ensure_opening_exists_and_fix_posted(db):
+    if not _opening_exists(db):
         return HTMLResponse(
             "❌ لا يمكن إنشاء قيود قبل القيد الافتتاحي.",
             status_code=400
