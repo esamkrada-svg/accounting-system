@@ -9,19 +9,28 @@ from app.database.models import (
 )
 
 
-def create_opening_entry(db: Session, rows: list):
+def create_opening_entry(db: Session, rows: list) -> int:
+    """
+    إنشاء القيد الافتتاحي كنقطة بداية للنظام.
+    - لا يعتمد على AccountingPeriod
+    - commit صريح
+    - يرجع entry.id
+    """
 
-    # 🔹 جلب العملة الأساسية
+    # ===============================
+    # 1️⃣ جلب العملة الأساسية
+    # ===============================
     base_currency = (
         db.query(Currency)
         .filter(Currency.is_base == True)
         .first()
     )
-
     if not base_currency:
         raise ValueError("❌ لا توجد عملة أساسية معرفة في النظام")
 
-    # 🔹 تأكد أنه لا يوجد افتتاحي سابق
+    # ===============================
+    # 2️⃣ منع التكرار فقط (ولا شيء غيره)
+    # ===============================
     opening_exists = (
         db.query(JournalEntry)
         .filter(JournalEntry.description == "Opening Balance")
@@ -30,21 +39,15 @@ def create_opening_entry(db: Session, rows: list):
     if opening_exists:
         raise ValueError("✅ القيد الافتتاحي موجود مسبقًا ولا يمكن إنشاؤه مرة أخرى")
 
-    # 🔹 منع أي قيود قبل الافتتاحي
-    any_other_entries = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description != "Opening Balance")
-        .first()
-    )
-    if any_other_entries:
-        raise ValueError("❌ يوجد قيود سابقة. لا يمكن إنشاء افتتاحي بعد وجود قيود")
-
-    # 🔹 رقم القيد: ليس 1 ثابت (حتى لا يصطدم)
-    # نبدأ من 1 فعلاً، لكن نحسبه ديناميك
+    # ===============================
+    # 3️⃣ تحديد رقم القيد (ديناميكي)
+    # ===============================
     max_no = db.query(func.max(JournalEntry.entry_no)).scalar()
     next_no = (max_no or 0) + 1
 
-    # 🔹 إنشاء القيد الافتتاحي (مرحّل)
+    # ===============================
+    # 4️⃣ إنشاء القيد الافتتاحي (مرحّل)
+    # ===============================
     entry = JournalEntry(
         entry_no=next_no,
         date=date.today(),
@@ -53,8 +56,11 @@ def create_opening_entry(db: Session, rows: list):
         posted=True
     )
     db.add(entry)
-    db.flush()
+    db.flush()  # نحصل على entry.id
 
+    # ===============================
+    # 5️⃣ إنشاء السطور
+    # ===============================
     total_debit = 0.0
     total_credit = 0.0
 
@@ -65,20 +71,28 @@ def create_opening_entry(db: Session, rows: list):
         if debit == 0 and credit == 0:
             continue
 
-        line = JournalLine(
-            entry_id=entry.id,
-            account_id=r["account_id"],
-            debit=debit,
-            credit=credit
+        db.add(
+            JournalLine(
+                entry_id=entry.id,
+                account_id=r["account_id"],
+                debit=debit,
+                credit=credit
+            )
         )
-        db.add(line)
 
         total_debit += debit
         total_credit += credit
 
-    # 🔹 التحقق من التوازن
+    # ===============================
+    # 6️⃣ التحقق من التوازن
+    # ===============================
     if round(total_debit, 2) != round(total_credit, 2):
         db.rollback()
         raise ValueError("❌ القيد الافتتاحي غير متوازن")
 
+    # ===============================
+    # 7️⃣ commit صريح ونهائي
+    # ===============================
     db.commit()
+
+    return entry.id
