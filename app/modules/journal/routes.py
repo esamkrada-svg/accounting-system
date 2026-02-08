@@ -31,7 +31,6 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # 🔹 حساب إجمالي المدين والدائن لكل قيد
     for entry in entries:
         entry.total_debit = sum((line.debit or 0) for line in entry.lines)
         entry.total_credit = sum((line.credit or 0) for line in entry.lines)
@@ -49,23 +48,23 @@ def _ensure_opening_exists_and_fix_posted(db: Session) -> bool:
     """
     ✅ شرط موحد:
     يكفي وجود Opening Balance في قاعدة البيانات.
-    وإذا كان موجودًا لكن posted=False (بسبب service أو تعديل سابق) نقوم بإصلاحه تلقائيًا.
+    وإذا كان موجودًا لكن posted=False نقوم بإصلاحه (بدون commit داخل GET).
     """
     opening = (
         db.query(JournalEntry)
         .filter(JournalEntry.description == "Opening Balance")
         .first()
     )
+
     if not opening:
         return False
 
-    # Self-healing: إذا موجود لكنه غير مرحّل → نحوله مرحّل
+    # Self-healing بدون side-effect
     if opening.posted is False:
         opening.posted = True
-        # نميّزه كافتتاحي
         if opening.entry_no is None:
             opening.entry_no = 0
-        db.commit()
+        db.flush()  # ❗ لا commit هنا
 
     return True
 
@@ -160,7 +159,6 @@ def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
     if not entry:
         return HTMLResponse("❌ القيد غير موجود", status_code=404)
 
-    # ❌ منع ترحيل القيد الافتتاحي من هنا
     if entry.description == "Opening Balance":
         return HTMLResponse(
             "❌ لا يمكن ترحيل القيد الافتتاحي من شاشة القيود.",
@@ -171,7 +169,6 @@ def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
         return RedirectResponse("/journal", status_code=303)
 
     max_no = db.query(func.max(JournalEntry.entry_no)).scalar() or 0
-    # تجنب الاصطدام مع الافتتاحي الذي قد يكون entry_no=0
     if max_no < 0:
         max_no = 0
 
