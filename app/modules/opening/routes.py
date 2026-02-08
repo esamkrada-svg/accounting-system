@@ -58,7 +58,6 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
         )
 
     # 3️⃣ ممنوع إنشاء افتتاحي إذا توجد أي قيود أخرى بالفعل
-    # لأن الافتتاحي لازم يكون أول قيد بالنظام
     any_existing_entry = (
         db.query(JournalEntry)
         .filter(JournalEntry.description != "Opening Balance")
@@ -139,9 +138,23 @@ async def create_opening(request: Request, db: Session = Depends(get_db)):
                 row["credit"] = float(value)
 
     try:
+        # Service تقوم بإنشاء القيد الافتتاحي
         create_opening_entry(db, rows)
+
+        # ✅ تثبيت الحالة النهائية: لازم يكون posted=True دائمًا
+        opening = (
+            db.query(JournalEntry)
+            .filter(JournalEntry.description == "Opening Balance")
+            .first()
+        )
+        if opening:
+            opening.posted = True
+            # يفضل أن يبقى entry_no فارغ/None أو 0 — اخترنا 0 كتمييز افتتاحي
+            if opening.entry_no is None:
+                opening.entry_no = 0
+            db.commit()
+
     except Exception as e:
-        # service فيها rollback، لكن نضمن هنا أيضًا
         db.rollback()
         return templates.TemplateResponse(
             "opening/message.html",
