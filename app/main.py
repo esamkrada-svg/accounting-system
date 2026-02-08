@@ -28,8 +28,8 @@ from app.api.currencies import router as api_currencies
 
 # ================= APP =================
 app = FastAPI(title="Accounting System")
-
-
+from app.core.error_middleware import ErrorCaptureMiddleware
+app.add_middleware(ErrorCaptureMiddleware)
 # ================= SEED CHART OF ACCOUNTS =================
 def seed_chart_of_accounts():
     db = SessionLocal()
