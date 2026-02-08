@@ -27,6 +27,7 @@ def get_db():
 def journal_index(request: Request, db: Session = Depends(get_db)):
     entries = (
         db.query(JournalEntry)
+        .filter(JournalEntry.entry_no != 0)  # إخفاء القيد الافتتاحي النظامي
         .order_by(JournalEntry.date.desc())
         .all()
     )
@@ -44,26 +45,11 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ✅ تحقق فقط – بدون تعديل بيانات
-def _opening_exists(db: Session) -> bool:
-    return (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description == "Opening Balance")
-        .first()
-        is not None
-    )
-
-
 # =========================
 # ➕ شاشة إنشاء قيد جديد
 # =========================
 @router.get("/create", response_class=HTMLResponse)
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
-
-    if not _opening_exists(db):
-        # ✅ توجيه صحيح بدل 400
-        return RedirectResponse("/opening", status_code=303)
-
     accounts = db.query(Account).order_by(Account.code).all()
 
     return templates.TemplateResponse(
@@ -84,10 +70,6 @@ async def save_journal_entry(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-
-    if not _opening_exists(db):
-        return RedirectResponse("/opening", status_code=303)
-
     entry = JournalEntry(
         date=date.today(),
         description=description,
@@ -139,19 +121,10 @@ def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
     if not entry:
         return HTMLResponse("❌ القيد غير موجود", status_code=404)
 
-    if entry.description == "Opening Balance":
-        return HTMLResponse(
-            "❌ لا يمكن ترحيل القيد الافتتاحي من شاشة القيود.",
-            status_code=400
-        )
-
     if entry.posted:
         return RedirectResponse("/journal", status_code=303)
 
     max_no = db.query(func.max(JournalEntry.entry_no)).scalar() or 0
-    if max_no < 0:
-        max_no = 0
-
     entry.entry_no = max_no + 1
     entry.posted = True
 
