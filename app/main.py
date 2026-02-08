@@ -185,7 +185,8 @@ app.include_router(dev_ai_router)
 
 from app.api.ai_debug import router as api_ai_debug
 app.include_router(api_ai_debug, prefix="/api")
-
+from app.api.dev_ai_auto import router as dev_ai_auto_router
+app.include_router(dev_ai_auto_router, prefix="/api")
 # ================= ROOT =================
 @app.get("/")
 def root():
