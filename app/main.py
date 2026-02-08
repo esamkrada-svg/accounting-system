@@ -181,3 +181,5 @@ app.include_router(api_currencies, prefix="/api")
 @app.get("/")
 def root():
     return RedirectResponse("/accounts")
+from app.api.dev_ai import router as dev_ai_router
+app.include_router(dev_ai_router)
