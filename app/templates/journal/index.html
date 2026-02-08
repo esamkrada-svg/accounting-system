@@ -24,6 +24,8 @@
             <th>رقم القيد</th>
             <th>التاريخ</th>
             <th>الوصف</th>
+            <th>إجمالي مدين</th>
+            <th>إجمالي دائن</th>
             <th>الحالة</th>
             <th>إجراء</th>
         </tr>
@@ -35,6 +37,8 @@
                 <td>{{ e.entry_no or "—" }}</td>
                 <td>{{ e.date }}</td>
                 <td>{{ e.description }}</td>
+                <td>{{ "%.2f"|format(e.total_debit) }}</td>
+                <td>{{ "%.2f"|format(e.total_credit) }}</td>
                 <td>
                     {% if e.posted %}
                         ✅ مرحّل
@@ -65,7 +69,7 @@
             {% endfor %}
         {% else %}
             <tr>
-                <td colspan="5" style="text-align:center">
+                <td colspan="7" style="text-align:center">
                     لا توجد قيود محاسبية
                 </td>
             </tr>
