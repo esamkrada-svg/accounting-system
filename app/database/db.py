@@ -1,13 +1,18 @@
+import os
+import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database.models import Base, User
-import hashlib
 
-DATABASE_URL = "sqlite:///./database.db"
+# ✅ استخدام DATABASE_URL من Railway
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    pool_pre_ping=True
 )
 
 SessionLocal = sessionmaker(
@@ -26,17 +31,16 @@ def init_db():
 
     db = SessionLocal()
     try:
-        db.query(User).filter(User.username == "admin").delete()
-        db.commit()
-
-        admin = User(
-            username="admin",
-            password_hash=hash_password("admin123"),
-            role="admin"
-        )
-        db.add(admin)
-        db.commit()
-
-        print("✅ Admin created: admin / admin123")
+        # ✅ إنشاء admin مرة واحدة فقط
+        exists = db.query(User).filter(User.username == "admin").first()
+        if not exists:
+            admin = User(
+                username="admin",
+                password_hash=hash_password("admin123"),
+                role="admin"
+            )
+            db.add(admin)
+            db.commit()
+            print("✅ Admin created: admin / admin123")
     finally:
         db.close()
