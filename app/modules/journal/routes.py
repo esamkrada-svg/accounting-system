@@ -27,6 +27,10 @@ def get_db():
 def journal_index(request: Request, db: Session = Depends(get_db)):
     entries = db.query(JournalEntry).order_by(JournalEntry.date.desc()).all()
 
+for entry in entries:
+    entry.total_debit = sum(line.debit or 0 for line in entry.lines)
+    entry.total_credit = sum(line.credit or 0 for line in entry.lines))
+
     return templates.TemplateResponse(
         "journal/index.html",
         {
