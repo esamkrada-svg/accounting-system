@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 # ================= DATABASE =================
 from app.database.db import init_db, SessionLocal
-from app.database.models import Account, Currency
+from app.database.models import Account, Currency, JournalEntry
 
 # ================= SEED CURRENCIES =================
 from app.scripts.seed_currencies import seed_currencies
@@ -18,9 +18,6 @@ from app.modules.currencies.routes import router as currencies_router
 from app.modules.exchange_rates.routes import router as exchange_rates_router
 from app.modules.periods.routes import router as periods_router
 
-# 🔴 OPENING ENTRY ROUTES
-from app.modules.opening.routes import router as opening_router
-
 # ================= API MODULES =================
 from app.api.auth import router as api_auth
 from app.api.accounts import router as api_accounts
@@ -32,11 +29,11 @@ from app.api.currencies import router as api_currencies
 # ================= APP =================
 app = FastAPI(title="Accounting System")
 
+
 # ================= SEED CHART OF ACCOUNTS =================
 def seed_chart_of_accounts():
     db = SessionLocal()
     try:
-        # ✅ إذا الحسابات موجودة لا نعيد الإدخال
         if db.query(Account).first():
             return
 
@@ -88,8 +85,38 @@ def seed_chart_of_accounts():
             db.add(Account(code=code, name=name, type=acc_type))
 
         db.commit()
-        print("✅ Chart of Accounts seeded successfully")
+    finally:
+        db.close()
 
+
+# ================= SYSTEM OPENING ENTRY =================
+def ensure_system_opening_entry():
+    """
+    إنشاء قيد افتتاحي افتراضي داخلي مرة واحدة فقط
+    """
+    db = SessionLocal()
+    try:
+        exists = (
+            db.query(JournalEntry)
+            .filter(JournalEntry.entry_no == 0)
+            .first()
+        )
+        if exists:
+            return
+
+        base_currency = db.query(Currency).filter(Currency.is_base == True).first()
+        if not base_currency:
+            return
+
+        entry = JournalEntry(
+            entry_no=0,
+            description="System Opening Balance",
+            currency_id=base_currency.id,
+            posted=True
+        )
+        db.add(entry)
+        db.commit()
+        print("✅ System Opening Entry created")
     finally:
         db.close()
 
@@ -98,17 +125,16 @@ def seed_chart_of_accounts():
 @app.on_event("startup")
 def startup():
     init_db()
-
-    # ✅ Seed الحسابات مرة واحدة فقط
     seed_chart_of_accounts()
 
-    # ✅ Seed العملات مرة واحدة فقط
     db = SessionLocal()
     try:
         if not db.query(Currency).first():
             seed_currencies()
     finally:
         db.close()
+
+    ensure_system_opening_entry()
 
 
 # ================= MIDDLEWARE =================
@@ -142,7 +168,6 @@ app.include_router(reports_router)
 app.include_router(currencies_router)
 app.include_router(exchange_rates_router)
 app.include_router(periods_router)
-app.include_router(opening_router)
 
 # ================= API ROUTES =================
 app.include_router(api_auth, prefix="/api")
