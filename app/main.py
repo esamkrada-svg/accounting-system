@@ -176,7 +176,8 @@ app.include_router(api_persons, prefix="/api")
 app.include_router(api_journal, prefix="/api")
 app.include_router(api_reports, prefix="/api")
 app.include_router(api_currencies, prefix="/api")
-
+from app.api.dev_ai_errors import router as dev_ai_errors_router
+app.include_router(dev_ai_errors_router, prefix="/api")
 # ================= ROOT =================
 @app.get("/")
 def root():
