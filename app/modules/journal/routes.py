@@ -44,7 +44,7 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ✅ journal يتحقق فقط – لا يصلح ولا يغيّر
+# ✅ تحقق فقط – بدون تعديل بيانات
 def _opening_exists(db: Session) -> bool:
     return (
         db.query(JournalEntry)
@@ -61,10 +61,8 @@ def _opening_exists(db: Session) -> bool:
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
 
     if not _opening_exists(db):
-        return HTMLResponse(
-            "❌ لا يمكن إنشاء قيود يومية قبل إنشاء القيد الافتتاحي.",
-            status_code=400
-        )
+        # ✅ توجيه صحيح بدل 400
+        return RedirectResponse("/opening", status_code=303)
 
     accounts = db.query(Account).order_by(Account.code).all()
 
@@ -88,10 +86,7 @@ async def save_journal_entry(
 ):
 
     if not _opening_exists(db):
-        return HTMLResponse(
-            "❌ لا يمكن إنشاء قيود قبل القيد الافتتاحي.",
-            status_code=400
-        )
+        return RedirectResponse("/opening", status_code=303)
 
     entry = JournalEntry(
         date=date.today(),
