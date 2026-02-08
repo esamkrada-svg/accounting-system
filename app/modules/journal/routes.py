@@ -25,11 +25,20 @@ def get_db():
 # =========================
 @router.get("/", response_class=HTMLResponse)
 def journal_index(request: Request, db: Session = Depends(get_db)):
-    entries = db.query(JournalEntry).order_by(JournalEntry.date.desc()).all()
+    entries = (
+        db.query(JournalEntry)
+        .order_by(JournalEntry.date.desc())
+        .all()
+    )
 
-for entry in entries:
-    entry.total_debit = sum(line.debit or 0 for line in entry.lines)
-    entry.total_credit = sum(line.credit or 0 for line in entry.lines))
+    # 🔹 حساب إجمالي المدين والدائن لكل قيد
+    for entry in entries:
+        entry.total_debit = sum(
+            (line.debit or 0) for line in entry.lines
+        )
+        entry.total_credit = sum(
+            (line.credit or 0) for line in entry.lines
+        )
 
     return templates.TemplateResponse(
         "journal/index.html",
@@ -118,12 +127,14 @@ async def save_journal_entry(
         if debit == 0 and credit == 0:
             continue
 
-        db.add(JournalLine(
-            entry_id=entry.id,
-            account_id=acc.id,
-            debit=debit,
-            credit=credit
-        ))
+        db.add(
+            JournalLine(
+                entry_id=entry.id,
+                account_id=acc.id,
+                debit=debit,
+                credit=credit
+            )
+        )
 
         total_debit += debit
         total_credit += credit
