@@ -4,9 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-from ai_agent.agent import AIAgent
-from ai_agent.context_loader import load_system_context
-from ai_agent.prompt_builder import build_debug_prompt
+from ai_agent.agent import DebugAgent
 
 router = APIRouter(
     prefix="/api/dev/ai",
@@ -14,50 +12,47 @@ router = APIRouter(
 )
 
 # ===============================
-# 📥 Schema
+# 📥 Schemas
 # ===============================
 class AnalyzeRequest(BaseModel):
-    problem: str
-    file: Optional[str] = None
-    extra_notes: Optional[str] = None
+    error_log: str
+    target_file: Optional[str] = "app/main.py"
 
 
 class AnalyzeResponse(BaseModel):
-    analysis: str
-    suggestions: str
+    prompt: str
 
 
 # ===============================
-# 🤖 AI Analyze Endpoint
+# 🤖 Debug Analyze Endpoint (READ-ONLY)
 # ===============================
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze_code(request: AnalyzeRequest):
     """
-    🧠 مساعد برمجي داخلي:
+    🧠 مساعد برمجي داخلي (READ-ONLY)
+
     - لا يعدّل الكود
     - لا يكتب ملفات
-    - يشرح ويقترح فقط
+    - لا ينفّذ أي أوامر
+    - يبني Debug Prompt فقط
     """
 
-    if not request.problem.strip():
-        raise HTTPException(status_code=400, detail="Problem description is required")
+    if not request.error_log.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="error_log is required"
+        )
 
-    # 1️⃣ تحميل سياق النظام (MD files)
-    context = load_system_context()
-
-    # 2️⃣ بناء الـ Prompt
-    prompt = build_debug_prompt(
-        system_context=context,
-        problem=request.problem,
-        file=request.file,
-        extra_notes=request.extra_notes
+    # 1️⃣ إنشاء الوكيل
+    agent = DebugAgent(
+        target_code_path=request.target_file
     )
 
-    # 3️⃣ تشغيل المساعد
-    agent = AIAgent()
-    result = agent.run(prompt)
+    # 2️⃣ بناء الـ Prompt التحليلي
+    prompt = agent.run(
+        error_log=request.error_log
+    )
 
     return {
-        "analysis": result.get("analysis", ""),
-        "suggestions": result.get("suggestions", "")
+        "prompt": prompt
     }
