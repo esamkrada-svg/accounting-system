@@ -28,8 +28,11 @@ from app.api.currencies import router as api_currencies
 
 # ================= APP =================
 app = FastAPI(title="Accounting System")
+
+# ================= ERROR MIDDLEWARE =================
 from app.core.error_middleware import ErrorCaptureMiddleware
 app.add_middleware(ErrorCaptureMiddleware)
+
 # ================= SEED CHART OF ACCOUNTS =================
 def seed_chart_of_accounts():
     db = SessionLocal()
@@ -91,9 +94,6 @@ def seed_chart_of_accounts():
 
 # ================= SYSTEM OPENING ENTRY =================
 def ensure_system_opening_entry():
-    """
-    إنشاء قيد افتتاحي افتراضي داخلي مرة واحدة فقط
-    """
     db = SessionLocal()
     try:
         exists = (
@@ -116,7 +116,6 @@ def ensure_system_opening_entry():
         )
         db.add(entry)
         db.commit()
-        print("✅ System Opening Entry created")
     finally:
         db.close()
 
@@ -176,15 +175,18 @@ app.include_router(api_persons, prefix="/api")
 app.include_router(api_journal, prefix="/api")
 app.include_router(api_reports, prefix="/api")
 app.include_router(api_currencies, prefix="/api")
-from app.api.dev_ai_errors import router as dev_ai_errors_router
-app.include_router(dev_ai_errors_router, prefix="/api")
+
+# ✅ AI Error API (مرة واحدة فقط)
 from app.api.dev_ai_errors import router as dev_ai_errors_router
 app.include_router(dev_ai_errors_router)
+
+from app.api.dev_ai import router as dev_ai_router
+app.include_router(dev_ai_router)
+
+from app.api.ai_debug import router as api_ai_debug
+app.include_router(api_ai_debug, prefix="/api")
+
 # ================= ROOT =================
 @app.get("/")
 def root():
     return RedirectResponse("/accounts")
-from app.api.dev_ai import router as dev_ai_router
-app.include_router(dev_ai_router)
-from app.api.ai_debug import router as api_ai_debug
-app.include_router(api_ai_debug, prefix="/api")
