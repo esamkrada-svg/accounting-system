@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 # ================= DATABASE =================
 from app.database.db import init_db, SessionLocal
-from app.database.models import Account
+from app.database.models import Account, Currency
 
 # ================= SEED CURRENCIES =================
 from app.scripts.seed_currencies import seed_currencies
@@ -18,7 +18,7 @@ from app.modules.currencies.routes import router as currencies_router
 from app.modules.exchange_rates.routes import router as exchange_rates_router
 from app.modules.periods.routes import router as periods_router
 
-# 🔴 NEW: OPENING ENTRY ROUTES
+# 🔴 OPENING ENTRY ROUTES
 from app.modules.opening.routes import router as opening_router
 
 # ================= API MODULES =================
@@ -36,6 +36,10 @@ app = FastAPI(title="Accounting System")
 def seed_chart_of_accounts():
     db = SessionLocal()
     try:
+        # ✅ إذا الحسابات موجودة لا نعيد الإدخال
+        if db.query(Account).first():
+            return
+
         accounts = [
             ("1000", "الأصول", "Asset"),
             ("1100", "الصندوق", "Asset"),
@@ -81,9 +85,7 @@ def seed_chart_of_accounts():
         ]
 
         for code, name, acc_type in accounts:
-            exists = db.query(Account).filter(Account.code == code).first()
-            if not exists:
-                db.add(Account(code=code, name=name, type=acc_type))
+            db.add(Account(code=code, name=name, type=acc_type))
 
         db.commit()
         print("✅ Chart of Accounts seeded successfully")
@@ -91,12 +93,23 @@ def seed_chart_of_accounts():
     finally:
         db.close()
 
+
 # ================= STARTUP =================
 @app.on_event("startup")
 def startup():
     init_db()
+
+    # ✅ Seed الحسابات مرة واحدة فقط
     seed_chart_of_accounts()
-    seed_currencies()
+
+    # ✅ Seed العملات مرة واحدة فقط
+    db = SessionLocal()
+    try:
+        if not db.query(Currency).first():
+            seed_currencies()
+    finally:
+        db.close()
+
 
 # ================= MIDDLEWARE =================
 PUBLIC_PATHS = (
@@ -119,6 +132,7 @@ async def auth_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+
 # ================= WEB ROUTES =================
 app.include_router(auth_router)
 app.include_router(accounts_router)
@@ -128,8 +142,6 @@ app.include_router(reports_router)
 app.include_router(currencies_router)
 app.include_router(exchange_rates_router)
 app.include_router(periods_router)
-
-# 🔴 NEW: OPENING ENTRY
 app.include_router(opening_router)
 
 # ================= API ROUTES =================
