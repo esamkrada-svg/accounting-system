@@ -23,3 +23,6 @@ def last_error():
         "status": "error",
         "data": error
     }
+@router.get("/trigger-test-error")
+def trigger_test_error():
+    raise Exception("TEST ERROR: middleware capture check")
