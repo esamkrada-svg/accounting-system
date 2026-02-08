@@ -6,7 +6,7 @@ from sqlalchemy import func
 from datetime import date
 
 from app.database.db import SessionLocal
-from app.database.models import JournalEntry, JournalLine, Account
+from app.database.models import JournalEntry, JournalLine, Account, Currency
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
 templates = Jinja2Templates(directory="app/templates")
@@ -27,7 +27,6 @@ def get_db():
 def journal_index(request: Request, db: Session = Depends(get_db)):
     entries = (
         db.query(JournalEntry)
-        .filter(JournalEntry.entry_no != 0)  # إخفاء القيد الافتتاحي النظامي
         .order_by(JournalEntry.date.desc())
         .all()
     )
@@ -50,6 +49,7 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
 # =========================
 @router.get("/create", response_class=HTMLResponse)
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
+
     accounts = db.query(Account).order_by(Account.code).all()
 
     return templates.TemplateResponse(
@@ -70,17 +70,28 @@ async def save_journal_entry(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    # ✅ جلب العملة الأساسية
+    base_currency = (
+        db.query(Currency)
+        .filter(Currency.is_base == True)
+        .first()
+    )
+
+    if not base_currency:
+        return HTMLResponse("❌ لا توجد عملة أساسية معرفة", status_code=400)
+
     entry = JournalEntry(
         date=date.today(),
         description=description,
+        currency_id=base_currency.id,  # ✅ الحل هنا
         posted=False
     )
     db.add(entry)
     db.flush()
 
     form = await request.form()
-    total_debit = 0
-    total_credit = 0
+    total_debit = 0.0
+    total_credit = 0.0
 
     accounts = db.query(Account).all()
 
