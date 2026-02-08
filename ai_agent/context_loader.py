@@ -45,7 +45,15 @@ def load_context(
 
 def load_file(relative_path: str) -> str:
     """
-    تحميل أي ملف داخل المشروع بشكل آمن
+    تحميل أي ملف داخل المشروع بشكل آمن (READ-ONLY)
     """
     path = _safe_path(relative_path)
     return read_text(path)
+
+
+# ✅ Alias متوافق مع agent.py
+def load_code(relative_path: str) -> str:
+    """
+    Alias لـ load_file للحفاظ على التوافق
+    """
+    return load_file(relative_path)
