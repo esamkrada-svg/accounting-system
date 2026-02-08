@@ -189,6 +189,9 @@ from app.api.dev_ai_auto import router as dev_ai_auto_router
 app.include_router(dev_ai_auto_router, prefix="/api")
 from app.api.dev_ai_context import router as dev_ai_context_router
 app.include_router(dev_ai_context_router)
+from app.api.dev_ai_chat import router as dev_ai_chat_router
+app.include_router(dev_ai_chat_router)
+
 # ================= ROOT =================
 @app.get("/")
 def root():
