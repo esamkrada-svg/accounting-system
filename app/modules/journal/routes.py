@@ -173,3 +173,88 @@ def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
 
     db.commit()
     return RedirectResponse("/journal", status_code=303)
+# =========================
+# 🟢 القيد الافتتاحي
+# =========================
+@router.get("/opening", response_class=HTMLResponse)
+def opening_entry_page(request: Request, db: Session = Depends(get_db)):
+    opening = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description == "Opening Balance")
+        .first()
+    )
+
+    if opening:
+        return HTMLResponse(
+            "✅ القيد الافتتاحي مسجل مسبقًا ولا يمكن إنشاؤه مرة أخرى.",
+            status_code=400
+        )
+
+    accounts = db.query(Account).order_by(Account.code).all()
+
+    return templates.TemplateResponse(
+        "journal/opening.html",
+        {
+            "request": request,
+            "accounts": accounts
+        }
+    )
+
+
+@router.post("/opening")
+async def save_opening_entry(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # منع التكرار
+    existing = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description == "Opening Balance")
+        .first()
+    )
+
+    if existing:
+        return HTMLResponse(
+            "❌ القيد الافتتاحي موجود مسبقًا.",
+            status_code=400
+        )
+
+    entry = JournalEntry(
+        date=date.today(),
+        description="Opening Balance",
+        posted=True
+    )
+    db.add(entry)
+    db.flush()
+
+    form = await request.form()
+    total_debit = 0
+    total_credit = 0
+
+    accounts = db.query(Account).all()
+
+    for acc in accounts:
+        debit = float(form.get(f"debit_{acc.id}", 0) or 0)
+        credit = float(form.get(f"credit_{acc.id}", 0) or 0)
+
+        if debit == 0 and credit == 0:
+            continue
+
+        db.add(
+            JournalLine(
+                entry_id=entry.id,
+                account_id=acc.id,
+                debit=debit,
+                credit=credit
+            )
+        )
+
+        total_debit += debit
+        total_credit += credit
+
+    if round(total_debit, 2) != round(total_credit, 2):
+        db.rollback()
+        return HTMLResponse("❌ القيد الافتتاحي غير متوازن", status_code=400)
+
+    db.commit()
+    return RedirectResponse("/journal", status_code=303)
