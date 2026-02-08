@@ -4,7 +4,6 @@ from typing import Optional
 from ai_agent.context_loader import load_context, load_code
 from ai_agent.prompt_builder import build_debug_prompt
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -37,6 +36,11 @@ class DebugAgent:
         )
 
         return prompt
+
+
+# ✅ Alias رسمي للـ API
+# حتى لا نكسر dev_ai.py أو أي استدعاء مستقبلي
+AIAgent = DebugAgent
 
 
 # ===============================
