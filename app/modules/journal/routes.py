@@ -33,12 +33,8 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
 
     # 🔹 حساب إجمالي المدين والدائن لكل قيد
     for entry in entries:
-        entry.total_debit = sum(
-            (line.debit or 0) for line in entry.lines
-        )
-        entry.total_credit = sum(
-            (line.credit or 0) for line in entry.lines
-        )
+        entry.total_debit = sum((line.debit or 0) for line in entry.lines)
+        entry.total_credit = sum((line.credit or 0) for line in entry.lines)
 
     return templates.TemplateResponse(
         "journal/index.html",
@@ -49,22 +45,38 @@ def journal_index(request: Request, db: Session = Depends(get_db)):
     )
 
 
+def _ensure_opening_exists_and_fix_posted(db: Session) -> bool:
+    """
+    ✅ شرط موحد:
+    يكفي وجود Opening Balance في قاعدة البيانات.
+    وإذا كان موجودًا لكن posted=False (بسبب service أو تعديل سابق) نقوم بإصلاحه تلقائيًا.
+    """
+    opening = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description == "Opening Balance")
+        .first()
+    )
+    if not opening:
+        return False
+
+    # Self-healing: إذا موجود لكنه غير مرحّل → نحوله مرحّل
+    if opening.posted is False:
+        opening.posted = True
+        # نميّزه كافتتاحي
+        if opening.entry_no is None:
+            opening.entry_no = 0
+        db.commit()
+
+    return True
+
+
 # =========================
 # ➕ شاشة إنشاء قيد جديد
 # =========================
 @router.get("/create", response_class=HTMLResponse)
 def create_journal_page(request: Request, db: Session = Depends(get_db)):
-    # 🔒 التأكد من وجود قيد افتتاحي مرحّل
-    opening = (
-        db.query(JournalEntry)
-        .filter(
-            JournalEntry.description == "Opening Balance",
-            JournalEntry.posted == True
-        )
-        .first()
-    )
 
-    if not opening:
+    if not _ensure_opening_exists_and_fix_posted(db):
         return HTMLResponse(
             "❌ لا يمكن إنشاء قيود يومية قبل إنشاء القيد الافتتاحي.",
             status_code=400
@@ -90,17 +102,8 @@ async def save_journal_entry(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    # 🔒 تأكيد وجود القيد الافتتاحي
-    opening = (
-        db.query(JournalEntry)
-        .filter(
-            JournalEntry.description == "Opening Balance",
-            JournalEntry.posted == True
-        )
-        .first()
-    )
 
-    if not opening:
+    if not _ensure_opening_exists_and_fix_posted(db):
         return HTMLResponse(
             "❌ لا يمكن إنشاء قيود قبل القيد الافتتاحي.",
             status_code=400
@@ -168,93 +171,12 @@ def post_journal_entry(entry_id: int, db: Session = Depends(get_db)):
         return RedirectResponse("/journal", status_code=303)
 
     max_no = db.query(func.max(JournalEntry.entry_no)).scalar() or 0
+    # تجنب الاصطدام مع الافتتاحي الذي قد يكون entry_no=0
+    if max_no < 0:
+        max_no = 0
+
     entry.entry_no = max_no + 1
     entry.posted = True
-
-    db.commit()
-    return RedirectResponse("/journal", status_code=303)
-# =========================
-# 🟢 القيد الافتتاحي
-# =========================
-@router.get("/opening", response_class=HTMLResponse)
-def opening_entry_page(request: Request, db: Session = Depends(get_db)):
-    opening = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description == "Opening Balance")
-        .first()
-    )
-
-    if opening:
-        return HTMLResponse(
-            "✅ القيد الافتتاحي مسجل مسبقًا ولا يمكن إنشاؤه مرة أخرى.",
-            status_code=400
-        )
-
-    accounts = db.query(Account).order_by(Account.code).all()
-
-    return templates.TemplateResponse(
-        "journal/opening.html",
-        {
-            "request": request,
-            "accounts": accounts
-        }
-    )
-
-
-@router.post("/opening")
-async def save_opening_entry(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    # منع التكرار
-    existing = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description == "Opening Balance")
-        .first()
-    )
-
-    if existing:
-        return HTMLResponse(
-            "❌ القيد الافتتاحي موجود مسبقًا.",
-            status_code=400
-        )
-
-    entry = JournalEntry(
-        date=date.today(),
-        description="Opening Balance",
-        posted=True
-    )
-    db.add(entry)
-    db.flush()
-
-    form = await request.form()
-    total_debit = 0
-    total_credit = 0
-
-    accounts = db.query(Account).all()
-
-    for acc in accounts:
-        debit = float(form.get(f"debit_{acc.id}", 0) or 0)
-        credit = float(form.get(f"credit_{acc.id}", 0) or 0)
-
-        if debit == 0 and credit == 0:
-            continue
-
-        db.add(
-            JournalLine(
-                entry_id=entry.id,
-                account_id=acc.id,
-                debit=debit,
-                credit=credit
-            )
-        )
-
-        total_debit += debit
-        total_credit += credit
-
-    if round(total_debit, 2) != round(total_credit, 2):
-        db.rollback()
-        return HTMLResponse("❌ القيد الافتتاحي غير متوازن", status_code=400)
 
     db.commit()
     return RedirectResponse("/journal", status_code=303)
