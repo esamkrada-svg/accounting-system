@@ -1,76 +1,55 @@
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional
+
+from ai_agent.context_loader import load_context, load_code
+from ai_agent.prompt_builder import build_debug_prompt
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-CONTEXT_FILES = [
-    "AI_DEBUG_RULES.md",
-    "AI_REVIEW_GUIDE.md",
-    "SYSTEM_MAP.md",
-    "ACCOUNTING_RULES.md",
-]
 
-
-def read_file(path: Path) -> str:
-    if not path.exists():
-        return f"[FILE NOT FOUND]: {path}"
-    return path.read_text(encoding="utf-8")
-
-
-def load_context() -> Dict[str, str]:
+class DebugAgent:
     """
-    تحميل ملفات السياق المعرفي للنظام (READ-ONLY)
-    """
-    context = {}
-    for file_name in CONTEXT_FILES:
-        file_path = PROJECT_ROOT / file_name
-        context[file_name] = read_file(file_path)
-    return context
-
-
-def load_code(target: Optional[str]) -> str:
-    """
-    تحميل كود الهدف (ملف واحد فقط)
-    """
-    if not target:
-        return "[NO TARGET FILE PROVIDED]"
-
-    code_path = PROJECT_ROOT / target
-    return read_file(code_path)
-
-
-def analyze(
-    problem: str,
-    target_file: Optional[str] = None,
-    extra_notes: Optional[str] = None
-) -> Dict[str, str]:
-    """
-    🧠 التحليل الأساسي للمساعد البرمجي
-    - لا يعدل الكود
-    - لا يكتب ملفات
-    - يعيد تحليل + اقتراحات فقط
+    🧠 Debug Agent (READ-ONLY)
+    - يجمع السياق
+    - يبني Prompt
+    - لا ينفّذ أي تعديل
     """
 
-    context = load_context()
-    code = load_code(target_file)
+    def __init__(self, target_code_path: str):
+        self.target_code_path = target_code_path
 
-    analysis = {
-        "problem": problem,
-        "target_file": target_file or "N/A",
-        "extra_notes": extra_notes or "",
-        "context_files_loaded": list(context.keys()),
-        "code_preview": code[:800],
-    }
+    def run(self, error_log: Optional[str] = None) -> str:
+        """
+        تشغيل التحليل وبناء Prompt فقط
+        """
+        # 1️⃣ تحميل السياق
+        context = load_context()
 
-    suggestions = (
-        "🔍 Suggested next steps:\n"
-        "- Review business rules related to the problem\n"
-        "- Verify database state and constraints\n"
-        "- Check posting logic and filtering (posted=True)\n"
-        "- Run isolated test on the affected module\n"
+        # 2️⃣ تحميل الكود الهدف
+        code = load_code(self.target_code_path)
+
+        # 3️⃣ بناء الـ Prompt
+        prompt = build_debug_prompt(
+            context=context,
+            code=code,
+            error_log=error_log
+        )
+
+        return prompt
+
+
+# ===============================
+# 🧪 تشغيل يدوي (اختياري)
+# ===============================
+if __name__ == "__main__":
+    agent = DebugAgent("app/main.py")
+
+    prompt = agent.run(
+        error_log="Example error: IntegrityError on journal_entries.entry_no"
     )
 
-    return {
-        "analysis": str(analysis),
-        "suggestions": suggestions
-    }
+    print("=" * 80)
+    print("🧠 GENERATED DEBUG PROMPT")
+    print("=" * 80)
+    print(prompt)
