@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-
+from typing import Optional, Dict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -11,8 +10,6 @@ CONTEXT_FILES = [
     "ACCOUNTING_RULES.md",
 ]
 
-CODE_TARGET = "app/main.py"
-
 
 def read_file(path: Path) -> str:
     if not path.exists():
@@ -20,7 +17,10 @@ def read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def load_context():
+def load_context() -> Dict[str, str]:
+    """
+    تحميل ملفات السياق المعرفي للنظام (READ-ONLY)
+    """
     context = {}
     for file_name in CONTEXT_FILES:
         file_path = PROJECT_ROOT / file_name
@@ -28,36 +28,49 @@ def load_context():
     return context
 
 
-def load_code():
-    code_path = PROJECT_ROOT / CODE_TARGET
+def load_code(target: Optional[str]) -> str:
+    """
+    تحميل كود الهدف (ملف واحد فقط)
+    """
+    if not target:
+        return "[NO TARGET FILE PROVIDED]"
+
+    code_path = PROJECT_ROOT / target
     return read_file(code_path)
 
 
-def run_agent():
-    print("🧠 AI Debug Agent v0.1")
-    print("=" * 40)
+def analyze(
+    problem: str,
+    target_file: Optional[str] = None,
+    extra_notes: Optional[str] = None
+) -> Dict[str, str]:
+    """
+    🧠 التحليل الأساسي للمساعد البرمجي
+    - لا يعدل الكود
+    - لا يكتب ملفات
+    - يعيد تحليل + اقتراحات فقط
+    """
 
     context = load_context()
-    code = load_code()
+    code = load_code(target_file)
 
-    print("\n📚 Loaded Context Files:")
-    for name in context:
-        print(f"- {name}")
+    analysis = {
+        "problem": problem,
+        "target_file": target_file or "N/A",
+        "extra_notes": extra_notes or "",
+        "context_files_loaded": list(context.keys()),
+        "code_preview": code[:800],
+    }
 
-    print("\n📄 Target Code:")
-    print(f"- {CODE_TARGET}")
+    suggestions = (
+        "🔍 Suggested next steps:\n"
+        "- Review business rules related to the problem\n"
+        "- Verify database state and constraints\n"
+        "- Check posting logic and filtering (posted=True)\n"
+        "- Run isolated test on the affected module\n"
+    )
 
-    print("\n--- CONTEXT PREVIEW ---")
-    for name, content in context.items():
-        print(f"\n### {name} ###")
-        print(content[:500])  # preview only
-
-    print("\n--- CODE PREVIEW ---")
-    print(code[:800])  # preview only
-
-    print("\n✅ Agent loaded context and code successfully.")
-    print("🛑 No code was modified. This is a READ-ONLY analysis.")
-
-
-if __name__ == "__main__":
-    run_agent()
+    return {
+        "analysis": str(analysis),
+        "suggestions": suggestions
+    }
