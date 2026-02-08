@@ -183,3 +183,5 @@ def root():
     return RedirectResponse("/accounts")
 from app.api.dev_ai import router as dev_ai_router
 app.include_router(dev_ai_router)
+from app.api.ai_debug import router as api_ai_debug
+app.include_router(api_ai_debug, prefix="/api")
