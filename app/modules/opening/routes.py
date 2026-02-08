@@ -25,7 +25,6 @@ def get_db():
 @router.get("/", response_class=HTMLResponse)
 def opening_entry_page(request: Request, db: Session = Depends(get_db)):
 
-    # 1️⃣ التأكد من وجود فترة محاسبية مفتوحة
     period = (
         db.query(AccountingPeriod)
         .filter(AccountingPeriod.closed == False)
@@ -42,7 +41,6 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
             }
         )
 
-    # 2️⃣ إذا القيد الافتتاحي موجود مسبقًا → نوجّه مباشرة لليومية
     opening_exists = (
         db.query(JournalEntry)
         .filter(JournalEntry.description == "Opening Balance")
@@ -51,7 +49,6 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
     if opening_exists:
         return RedirectResponse("/journal", status_code=303)
 
-    # 3️⃣ ممنوع إنشاء افتتاحي إذا توجد أي قيود أخرى بالفعل
     any_existing_entry = (
         db.query(JournalEntry)
         .filter(JournalEntry.description != "Opening Balance")
@@ -62,11 +59,10 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
             "opening/message.html",
             {
                 "request": request,
-                "message": "❌ يوجد قيود محاسبية سابقة بالفعل. لا يمكن إنشاء القيد الافتتاحي بعد وجود قيود."
+                "message": "❌ يوجد قيود محاسبية سابقة. لا يمكن إنشاء القيد الافتتاحي."
             }
         )
 
-    # 4️⃣ جلب الحسابات
     accounts = db.query(Account).order_by(Account.code).all()
 
     return templates.TemplateResponse(
@@ -80,40 +76,16 @@ def opening_entry_page(request: Request, db: Session = Depends(get_db)):
 
 
 # ===============================
-# 💾 حفظ القيد الافتتاحي
+# 💾 حفظ القيد الافتتاحي (نهائي)
 # ===============================
 @router.post("/create")
 async def create_opening(request: Request, db: Session = Depends(get_db)):
-
-    # حماية إضافية: إذا الافتتاحي موجود -> نوجّه لليومية
-    opening_exists = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description == "Opening Balance")
-        .first()
-    )
-    if opening_exists:
-        return RedirectResponse("/journal", status_code=303)
-
-    # حماية إضافية: إذا توجد أي قيود أخرى -> ممنوع
-    any_existing_entry = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.description != "Opening Balance")
-        .first()
-    )
-    if any_existing_entry:
-        return templates.TemplateResponse(
-            "opening/message.html",
-            {
-                "request": request,
-                "message": "❌ لا يمكن حفظ القيد الافتتاحي لأن هناك قيودًا سابقة."
-            }
-        )
 
     form = dict(await request.form())
     rows = []
 
     for key, value in form.items():
-        if value is None or str(value).strip() == "":
+        if not value:
             continue
 
         if key.startswith("debit_") or key.startswith("credit_"):
@@ -130,23 +102,20 @@ async def create_opening(request: Request, db: Session = Depends(get_db)):
             else:
                 row["credit"] = float(value)
 
-    try:
-        create_opening_entry(db, rows)
+    # 🔴 نقطة الحسم
+    create_opening_entry(db, rows)
 
-    except Exception as e:
-        db.rollback()
-        return templates.TemplateResponse(
-            "opening/message.html",
-            {
-                "request": request,
-                "message": f"❌ فشل إنشاء القيد الافتتاحي: {str(e)}"
-            }
-        )
-
-    return templates.TemplateResponse(
-        "opening/message.html",
-        {
-            "request": request,
-            "message": "✅ تم إنشاء القيد الافتتاحي بنجاح. يمكنك الآن البدء باستخدام النظام."
-        }
+    # 🔒 تأكيد نهائي
+    opening = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.description == "Opening Balance")
+        .first()
     )
+    if opening:
+        opening.posted = True
+        if opening.entry_no is None:
+            opening.entry_no = 0
+        db.commit()
+
+    # ✅ Redirect حقيقي — ينهي الطلب ويكسر الحلقة
+    return RedirectResponse("/journal", status_code=303)
